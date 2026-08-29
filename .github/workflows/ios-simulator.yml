@@ -140,3 +140,39 @@ jobs:
             build.log
             crashes/
           if-no-files-found: ignore
+
+      # Unsigned device build, packaged as an .ipa. AltServer / SideStore
+      # re-signs this with your own Apple ID at install time, so CI never
+      # needs a certificate or provisioning profile.
+      - name: Build unsigned device IPA
+        if: always()
+        run: |
+          set -eu
+          xcodebuild build \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build-device \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            2>&1 | tail -30
+          APP=$(find build-device/Build/Products/Release-iphoneos -maxdepth 1 -name "Caster.app" | head -1)
+          if [ -z "$APP" ]; then
+            echo "::error::Caster.app not produced for device"
+            find build-device/Build/Products -maxdepth 2 || true
+            exit 1
+          fi
+          rm -rf Payload
+          mkdir -p Payload
+          cp -R "$APP" Payload/
+          zip -qry Caster-unsigned.ipa Payload
+          ls -lh Caster-unsigned.ipa
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: caster-ipa
+          path: Caster-unsigned.ipa
+          if-no-files-found: warn
