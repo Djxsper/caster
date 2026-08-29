@@ -52,8 +52,19 @@ struct FingerPickerView: View {
             theme.background
                 .ignoresSafeArea()
 
-            TouchSurface(arena: arena) { _ in
-                ringLayer
+            TouchSurface(arena: arena) { size in
+                ZStack {
+                    if arena.activeCount == 0, resolution == nil {
+                        EmptyPlayHint(
+                            systemImage: "hand.point.up.left",
+                            title: "Fingers down",
+                            detail: "Two or more, held still for three seconds."
+                        )
+                        .position(x: size.width / 2, y: size.height / 2)
+                        .transition(.opacity)
+                    }
+                    ringLayer
+                }
             }
 
             VStack(spacing: 0) {

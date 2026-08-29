@@ -40,8 +40,19 @@ struct TapFrenzyView: View {
             theme.background
                 .ignoresSafeArea()
 
-            TouchSurface(arena: arena) { _ in
-                ringLayer
+            TouchSurface(arena: arena) { size in
+                ZStack {
+                    if phase == .claiming, arena.activeCount == 0 {
+                        EmptyPlayHint(
+                            systemImage: "hand.tap",
+                            title: "Claim a circle",
+                            detail: "Put a finger down where you want your circle. You will tap it later."
+                        )
+                        .position(x: size.width / 2, y: size.height / 2)
+                        .transition(.opacity)
+                    }
+                    ringLayer
+                }
             }
 
             VStack(spacing: 12) {

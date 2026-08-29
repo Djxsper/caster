@@ -282,10 +282,19 @@ private struct WheelRenderer {
                 .foregroundStyle(ink)
         )
 
+        // A slice on the left half puts its label past vertical, where the
+        // text ends up upside down. Turn the layer the other way and draw down
+        // the opposite radius, which lands in the same place the right way up.
+        let isFlipped = cos(midAngle) < 0
+
         var layer = context
         layer.translateBy(x: center.x, y: center.y)
-        layer.rotate(by: .radians(midAngle))
-        layer.draw(resolved, at: CGPoint(x: labelRadius, y: 0), anchor: .center)
+        layer.rotate(by: .radians(isFlipped ? midAngle + .pi : midAngle))
+        layer.draw(
+            resolved,
+            at: CGPoint(x: isFlipped ? -labelRadius : labelRadius, y: 0),
+            anchor: .center
+        )
     }
 
     /// Slice fill plus an ink colour that stays legible on it, picked from the

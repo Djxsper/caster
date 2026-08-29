@@ -38,8 +38,19 @@ struct ChickenView: View {
             theme.background
                 .ignoresSafeArea()
 
-            TouchSurface(arena: arena) { _ in
-                ringLayer
+            TouchSurface(arena: arena) { size in
+                ZStack {
+                    if phase == .gathering, arena.activeCount == 0 {
+                        EmptyPlayHint(
+                            systemImage: "flame",
+                            title: "Hold on",
+                            detail: "Everyone puts a finger anywhere on the screen and keeps it there."
+                        )
+                        .position(x: size.width / 2, y: size.height / 2)
+                        .transition(.opacity)
+                    }
+                    ringLayer
+                }
             }
 
             VStack(spacing: 12) {

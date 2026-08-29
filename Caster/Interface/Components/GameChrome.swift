@@ -158,6 +158,36 @@ struct TouchSurface<Overlay: View>: View {
     }
 }
 
+/// What a touch game shows before anyone has put a finger down. Without it a
+/// full-screen touch surface is just a blank page.
+struct EmptyPlayHint: View {
+    @Environment(\.theme) private var theme
+
+    let systemImage: String
+    let title: String
+    let detail: String
+
+    var body: some View {
+        VStack(spacing: 14) {
+            Image(systemName: systemImage)
+                .font(.system(size: 52, weight: .light))
+                .foregroundStyle(theme.border)
+
+            Text(title)
+                .font(.system(.title3, design: .rounded))
+                .fontWeight(.bold)
+                .foregroundStyle(theme.textPrimary)
+
+            Text(detail)
+                .font(.system(.footnote, design: .rounded))
+                .foregroundStyle(theme.textSecondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 280)
+        }
+        .allowsHitTesting(false)
+    }
+}
+
 /// The result card that slides in when a round resolves.
 struct ResultBanner: View {
     @Environment(\.theme) private var theme

@@ -162,7 +162,9 @@ struct UppercutView: View {
 
     private var lightColor: Color {
         switch phase {
-        case .gathering: return theme.surfaceRaised
+        // Not `surfaceRaised`: that is near-white in Light Mode, and this
+        // circle carries white glyphs on top of it.
+        case .gathering: return theme.textSecondary
         case .armed: return theme.danger
         case .cued: return theme.success
         case .finished: return falseStartSlot == nil ? theme.accent : theme.danger
