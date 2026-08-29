@@ -1,0 +1,335 @@
+import SwiftUI
+
+/// Everyone holds a finger down. One circle lights up at a time; let go before
+/// it goes out and you are safe and out of the game. Too slow and you stay in.
+/// The last one still holding loses.
+///
+/// The window tightens with every flash, so a round that starts forgiving ends
+/// as a coin-flip on reflexes.
+struct ChickenView: View {
+    private enum Phase {
+        case gathering
+        case playing
+        case finished
+    }
+
+    @Environment(AppEnvironment.self) private var environment
+    @Environment(\.theme) private var theme
+
+    @State private var arena = TouchArena()
+    @State private var phase: Phase = .gathering
+    @State private var activeSlots: [Int] = []
+    @State private var safeSlots: [Int] = []
+    @State private var flashSlot: Int?
+    /// Kept past the end of a flash so the next pick can avoid an immediate repeat.
+    @State private var lastFlashSlot: Int?
+    @State private var flashProgress: Double = 0
+    @State private var liftedSlot: Int?
+    @State private var loserSlot: Int?
+    @State private var waitingOnSlot: Int?
+    @State private var flashCount = 0
+    @State private var settleTask: Task<Void, Never>?
+    @State private var roundTask: Task<Void, Never>?
+
+    private let settleDuration: Double = 1.5
+
+    var body: some View {
+        ZStack {
+            theme.background
+                .ignoresSafeArea()
+
+            TouchSurface(arena: arena) { _ in
+                ringLayer
+            }
+
+            VStack(spacing: 12) {
+                Spacer(minLength: 0)
+
+                if !safeSlots.isEmpty {
+                    safeStrip
+                        .padding(.horizontal, 16)
+                }
+
+                StatusLine(text: statusText, emphasis: statusTint)
+
+                footer
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 20)
+            }
+            .padding(.top, 12)
+        }
+        .navigationTitle(GameMode.chicken.title)
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear(perform: configure)
+        .onDisappear(perform: teardown)
+    }
+
+    // MARK: - Play area
+
+    @ViewBuilder
+    private var ringLayer: some View {
+        if phase == .gathering {
+            ForEach(arena.activeFingers) { finger in
+                FingerRing(color: theme.playerColor(for: finger.slot), diameter: 78)
+                    .position(finger.location)
+            }
+        } else {
+            ForEach(activeSlots, id: \.self) { slot in
+                if let anchor = arena.anchor(for: slot) {
+                    FingerRing(
+                        color: ringColor(for: slot),
+                        diameter: 78,
+                        progress: slot == flashSlot ? flashProgress : 0,
+                        isHighlighted: slot == flashSlot,
+                        isDimmed: waitingOnSlot == slot,
+                        badge: slot == loserSlot ? "✕" : nil
+                    )
+                    .position(anchor)
+                }
+            }
+        }
+    }
+
+    private var safeStrip: some View {
+        HStack(spacing: 8) {
+            Text("Out safe")
+                .font(.system(.caption, design: .rounded).weight(.semibold))
+                .foregroundStyle(theme.textSecondary)
+
+            ForEach(safeSlots, id: \.self) { slot in
+                Text("\(slot + 1)")
+                    .font(.system(.caption, design: .rounded).weight(.bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 24, height: 24)
+                    .background(theme.playerColor(for: slot), in: Circle())
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 10)
+        .padding(.horizontal, 14)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(theme.surfaceRaised)
+        )
+    }
+
+    @ViewBuilder
+    private var footer: some View {
+        switch phase {
+        case .gathering:
+            EmptyView()
+        case .playing:
+            SecondaryButton(title: "Reset", action: resetRound)
+        case .finished:
+            PrimaryButton(title: "Play Again", action: resetRound)
+        }
+    }
+
+    private func ringColor(for slot: Int) -> Color {
+        if slot == loserSlot { return theme.danger }
+        if slot == flashSlot { return theme.warning }
+        return theme.playerColor(for: slot)
+    }
+
+    private var statusText: String {
+        switch phase {
+        case .gathering:
+            let count = arena.activeCount
+            if count == 0 { return "Everyone hold a finger down" }
+            if count == 1 { return "One finger down — needs at least two" }
+            return "Hold still…"
+        case .playing:
+            if let waitingOnSlot {
+                return "Player \(waitingOnSlot + 1), finger back on the glass"
+            }
+            if flashSlot != nil { return "Let go!" }
+            return "\(activeSlots.count) still in. Hold."
+        case .finished:
+            guard let loserSlot else { return "Round complete." }
+            return "Player \(loserSlot + 1) is last in and loses."
+        }
+    }
+
+    private var statusTint: Color? {
+        switch phase {
+        case .finished: return theme.danger
+        case .playing: return flashSlot == nil ? nil : theme.warning
+        default: return nil
+        }
+    }
+
+    // MARK: - Round flow
+
+    private func configure() {
+        environment.hapticEngine.startEngine()
+        environment.soundEngine.start()
+        arena.slotPolicy = .sticky(radius: 90)
+        arena.reset()
+
+        arena.onBegan = { _ in
+            if phase == .gathering {
+                environment.cue(.light, .place)
+                scheduleStart()
+            }
+        }
+
+        arena.onEnded = { finger in
+            switch phase {
+            case .gathering:
+                scheduleStart()
+            case .playing:
+                // Recorded rather than acted on: the flash loop is what decides
+                // whether this lift landed inside the window.
+                liftedSlot = finger.slot
+            case .finished:
+                break
+            }
+        }
+    }
+
+    private func teardown() {
+        settleTask?.cancel()
+        roundTask?.cancel()
+        settleTask = nil
+        roundTask = nil
+        arena.reset()
+    }
+
+    private func scheduleStart() {
+        settleTask?.cancel()
+        settleTask = nil
+        guard phase == .gathering, arena.activeCount >= 2 else { return }
+
+        settleTask = Task {
+            guard (try? await Task.sleep(for: .seconds(settleDuration))) != nil else { return }
+            beginRound()
+        }
+    }
+
+    private func beginRound() {
+        guard phase == .gathering, arena.activeCount >= 2 else { return }
+
+        activeSlots = arena.occupiedSlots.sorted()
+        safeSlots = []
+        loserSlot = nil
+        flashSlot = nil
+        lastFlashSlot = nil
+        liftedSlot = nil
+        waitingOnSlot = nil
+        flashCount = 0
+        arena.acceptsNewSlots = false
+        phase = .playing
+        environment.cue(.heavy, .pip)
+
+        roundTask = Task { await runFlashes() }
+    }
+
+    private func runFlashes() async {
+        while phase == .playing, activeSlots.count > 1, !Task.isCancelled {
+            guard (try? await Task.sleep(for: .seconds(Double.random(in: 0.55...1.5)))) != nil else { return }
+            guard !Task.isCancelled else { return }
+
+            guard let target = await nextTarget() else { return }
+            waitingOnSlot = nil
+
+            let window = max(0.32, 0.62 - Double(flashCount) * 0.03)
+            flashCount += 1
+            liftedSlot = nil
+            flashSlot = target
+            lastFlashSlot = target
+            environment.cue(.medium, .pip)
+
+            withAnimation(.linear(duration: window)) { flashProgress = 1 }
+            let survived = await waitForLift(of: target, within: window)
+            setFlashProgressWithoutAnimation(0)
+            flashSlot = nil
+
+            if survived {
+                markSafe(target)
+            } else {
+                environment.cue(.heavy, .miss)
+            }
+        }
+
+        guard !Task.isCancelled, phase == .playing else { return }
+        finish()
+    }
+
+    /// Only a slot with a finger actually on it can be flashed. Someone who has
+    /// drifted off gets called out instead of being handed a free elimination.
+    private func nextTarget() async -> Int? {
+        while !Task.isCancelled {
+            let candidates = activeSlots.filter { arena.isSlotHeld($0) }
+            if let last = lastFlashSlot, candidates.count > 1 {
+                let others = candidates.filter { $0 != last }
+                if let pick = others.randomElement() { return pick }
+            }
+            if let pick = candidates.randomElement() { return pick }
+
+            // Nobody is holding: name someone and wait for a hand to come back.
+            waitingOnSlot = activeSlots.first
+            guard (try? await Task.sleep(for: .milliseconds(200))) != nil else { return nil }
+        }
+        return nil
+    }
+
+    /// - Returns: true when the flashed slot lifted before the window closed.
+    private func waitForLift(of slot: Int, within window: Double) async -> Bool {
+        let deadline = Date().addingTimeInterval(window)
+        while Date() < deadline {
+            if liftedSlot == slot { return true }
+            guard (try? await Task.sleep(for: .milliseconds(12))) != nil else { return false }
+        }
+        // One last look: a lift landing in the final few milliseconds still counts.
+        return liftedSlot == slot
+    }
+
+    private func markSafe(_ slot: Int) {
+        withAnimation(.easeOut(duration: 0.25)) {
+            activeSlots.removeAll { $0 == slot }
+            safeSlots.append(slot)
+        }
+        // Retiring drops the anchor, so their hand leaving for good cannot come
+        // back and claim someone else's circle.
+        arena.retire(slot: slot)
+        environment.cue(.medium, .safe)
+    }
+
+    private func finish() {
+        flashSlot = nil
+        waitingOnSlot = nil
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+            loserSlot = activeSlots.first
+            phase = .finished
+        }
+        environment.cue(.heavy, .boom)
+    }
+
+    private func setFlashProgressWithoutAnimation(_ value: Double) {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) { flashProgress = value }
+    }
+
+    private func resetRound() {
+        teardown()
+        phase = .gathering
+        activeSlots = []
+        safeSlots = []
+        flashSlot = nil
+        lastFlashSlot = nil
+        liftedSlot = nil
+        loserSlot = nil
+        waitingOnSlot = nil
+        flashCount = 0
+        setFlashProgressWithoutAnimation(0)
+    }
+}
+
+#Preview {
+    NavigationStack {
+        ChickenView()
+            .environment(AppEnvironment())
+    }
+}

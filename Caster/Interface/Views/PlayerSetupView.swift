@@ -55,48 +55,15 @@ struct PlayerSetupView: View {
                 ScrollView {
                     VStack(spacing: 8) {
                         ForEach(0..<playerCount, id: \.self) { index in
-                            HStack(spacing: 12) {
-                                Circle()
-                                    .fill(theme.playerColor(for: index))
-                                    .frame(width: 28, height: 28)
-
-                                TextField("Player \(index + 1)", text: $playerNames[index])
-                                    .font(.body)
-                                    .foregroundStyle(theme.textPrimary)
-                                    .textInputAutocapitalization(.words)
-                                    .autocorrectionDisabled()
-                                    .submitLabel(.done)
-                                    .focused($focusedField, equals: index)
-
-                                Spacer(minLength: 0)
-                            }
-                            .padding(.vertical, 10)
-                            .padding(.horizontal, 16)
-                            .background(
-                                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    .fill(theme.surfaceRaised)
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    .stroke(theme.border, lineWidth: 1)
-                            )
+                            nameRow(index: index)
                         }
                     }
                     .padding(.horizontal, 16)
                 }
 
-                Button(action: startGame) {
-                    Text("Start Game")
-                        .font(.system(.title3, design: .rounded))
-                        .fontWeight(.bold)
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(theme.accent, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 16)
-                .padding(.bottom, 24)
+                PrimaryButton(title: "Start Game", action: startGame)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 24)
             }
             .padding(.top, 12)
         }
@@ -109,13 +76,41 @@ struct PlayerSetupView: View {
         }
     }
 
+    private func nameRow(index: Int) -> some View {
+        HStack(spacing: 12) {
+            Circle()
+                .fill(theme.playerColor(for: index))
+                .frame(width: 28, height: 28)
+
+            TextField("Player \(index + 1)", text: $playerNames[index])
+                .font(.body)
+                .foregroundStyle(theme.textPrimary)
+                .textInputAutocapitalization(.words)
+                .autocorrectionDisabled()
+                .submitLabel(.done)
+                .focused($focusedField, equals: index)
+
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 10)
+        .padding(.horizontal, 16)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(theme.surfaceRaised)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(theme.border, lineWidth: 1)
+        )
+    }
+
     private func startGame() {
         focusedField = nil
         // Write into the shared state instead of a throwaway local instance —
-        // this is what the draw screen actually reads.
+        // this is what the game screen actually reads.
         gameState.configurePlayers(count: playerCount, names: playerNames)
         environment.hapticEngine.playFeedback(type: .heavy)
-        path.append(.draw)
+        path.append(.game(gameState.currentMode))
     }
 }
 

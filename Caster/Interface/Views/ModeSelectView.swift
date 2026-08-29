@@ -30,31 +30,34 @@ struct ModeSelectView: View {
                     .padding(.vertical, 8)
                 }
 
-                Button {
-                    environment.hapticEngine.playFeedback(type: .medium)
-                    path.append(.playerSetup)
-                } label: {
-                    Text("Continue")
-                        .font(.system(.title3, design: .rounded))
-                        .fontWeight(.bold)
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(theme.accent, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 16)
-                .padding(.bottom, 24)
+                PrimaryButton(title: continueTitle, action: advance)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 24)
             }
         }
         .navigationTitle("Game Modes")
         .navigationBarTitleDisplayMode(.inline)
     }
 
+    /// The label names the next screen, because it is not always the game — two
+    /// modes need a setup step first.
+    private var continueTitle: String {
+        switch gameState.currentMode.setupRoute {
+        case .playerSetup: return "Add Players"
+        case .wheelSetup: return "Edit the Wheel"
+        default: return "Play"
+        }
+    }
+
+    private func advance() {
+        environment.hapticEngine.playFeedback(type: .medium)
+        let mode = gameState.currentMode
+        path.append(mode.setupRoute ?? .game(mode))
+    }
+
     private func modeCard(mode: GameMode, isSelected: Bool) -> some View {
-        // One Button for the whole row. The previous version had a no-op
-        // `onTapGesture` on the card itself, which swallowed the parent's tap
-        // and made selection impossible.
+        // One Button for the whole row. A no-op `onTapGesture` on the card
+        // itself would swallow the parent's tap and make selection impossible.
         Button {
             environment.hapticEngine.playFeedback(type: .light)
             withAnimation(.easeInOut(duration: 0.15)) {

@@ -9,6 +9,9 @@ enum DarkTheme {
         textPrimary: Color(red: 0.965, green: 0.965, blue: 0.965),
         textSecondary: Color(red: 0.569, green: 0.569, blue: 0.569),
         accent: Color(red: 0.235, green: 0.506, blue: 0.882),
+        success: Color(red: 0.157, green: 0.780, blue: 0.549),
+        danger: Color(red: 0.937, green: 0.325, blue: 0.376),
+        warning: Color(red: 0.976, green: 0.749, blue: 0.290),
         playerColors: PlayerPalette.colors
     )
 }

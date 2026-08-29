@@ -112,9 +112,15 @@ jobs:
           }
 
           shoot 1-launch
-          shoot 2-mode-select  modeSelect
-          shoot 3-player-setup playerSetup
-          shoot 4-draw         draw
+          shoot 2-mode-select   modeSelect
+          shoot 3-player-setup  playerSetup
+          shoot 4-wheel-setup   wheelSetup
+          shoot 5-finger-picker fingerPicker
+          shoot 6-pinwheel      pinwheel
+          shoot 7-hot-potato    hotPotato
+          shoot 8-uppercut      uppercut
+          shoot 9-tap-frenzy    tapFrenzy
+          shoot 10-chicken      chicken
 
           ls -la screenshots
 

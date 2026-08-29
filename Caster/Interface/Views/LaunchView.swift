@@ -1,12 +1,15 @@
 import SwiftUI
 
 /// Screens reachable from the launch screen. A single `NavigationStack` path
-/// replaces the previous chain of sheets-presenting-sheets, which stacked
-/// modals on top of each other and gave each screen its own dead-end state.
+/// replaces a chain of sheets-presenting-sheets, which stacked modals on top of
+/// each other and gave each screen its own dead-end state.
 enum Route: Hashable {
     case modeSelect
+    /// Name entry, for the modes that address people by name.
     case playerSetup
-    case draw
+    /// The pinwheel's entry list.
+    case wheelSetup
+    case game(GameMode)
 }
 
 struct LaunchView: View {
@@ -41,51 +44,58 @@ struct LaunchView: View {
                             .foregroundStyle(theme.textSecondary)
                     }
 
-                    Button {
+                    PrimaryButton(title: "Begin") {
                         environment.hapticEngine.playFeedback(type: .medium)
                         path.append(.modeSelect)
-                    } label: {
-                        Text("Begin")
-                            .font(.system(.title3, design: .rounded))
-                            .fontWeight(.bold)
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(theme.accent, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                     }
-                    .buttonStyle(.plain)
                     .frame(maxWidth: 250)
                     .padding(.top, 32)
                 }
                 .padding()
             }
             .navigationDestination(for: Route.self) { route in
-                switch route {
-                case .modeSelect: ModeSelectView(path: $path)
-                case .playerSetup: PlayerSetupView(path: $path)
-                case .draw: DrawView(path: $path)
-                }
+                destination(for: route)
             }
         }
-        .onAppear {
-            // Kick the repeating animation once the view is on screen.
-            isPulsing = true
-            environment.hapticEngine.startEngine()
+        .onAppear(perform: handleAppear)
+    }
 
-            #if DEBUG
-            // CI screenshot deep-link; a no-op during normal use.
-            let route = ScreenshotSupport.requestedRoute
-            if !route.isEmpty {
-                if ScreenshotSupport.needsSeededPlayers {
-                    gameState.configurePlayers(
-                        count: ScreenshotSupport.sampleNames.count,
-                        names: ScreenshotSupport.sampleNames
-                    )
-                }
-                path = route
-            }
-            #endif
+    @ViewBuilder
+    private func destination(for route: Route) -> some View {
+        switch route {
+        case .modeSelect:
+            ModeSelectView(path: $path)
+        case .playerSetup:
+            PlayerSetupView(path: $path)
+        case .wheelSetup:
+            WheelSetupView(path: $path)
+        case .game(let mode):
+            GameHostView(mode: mode)
         }
+    }
+
+    private func handleAppear() {
+        // Kick the repeating animation once the view is on screen.
+        isPulsing = true
+        environment.hapticEngine.startEngine()
+        environment.soundEngine.start()
+
+        #if DEBUG
+        // CI screenshot deep-link; a no-op during normal use.
+        let route = ScreenshotSupport.requestedRoute
+        if !route.isEmpty {
+            if ScreenshotSupport.needsSeededPlayers {
+                gameState.configurePlayers(
+                    count: ScreenshotSupport.sampleNames.count,
+                    names: ScreenshotSupport.sampleNames
+                )
+            }
+            if let mode = ScreenshotSupport.requestedMode {
+                gameState.currentMode = mode
+            }
+            path = route
+        }
+        #endif
     }
 
     private var imageIcon: some View {
@@ -105,8 +115,26 @@ struct LaunchView: View {
     }
 }
 
+/// Routes a mode to its screen. One place to add a game, rather than a switch
+/// buried in `navigationDestination`.
+struct GameHostView: View {
+    let mode: GameMode
+
+    var body: some View {
+        switch mode {
+        case .fingerPicker: FingerPickerView()
+        case .pinwheel: PinwheelView()
+        case .hotPotato: HotPotatoView()
+        case .uppercut: UppercutView()
+        case .tapFrenzy: TapFrenzyView()
+        case .chicken: ChickenView()
+        }
+    }
+}
+
 #Preview {
     LaunchView()
         .environment(AppEnvironment())
         .environment(GameState())
+        .environment(WheelStore())
 }

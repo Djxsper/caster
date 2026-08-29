@@ -9,6 +9,9 @@ enum LightTheme {
         textPrimary: Color(red: 0.063, green: 0.063, blue: 0.063),
         textSecondary: Color(red: 0.404, green: 0.404, blue: 0.404),
         accent: Color(red: 0.235, green: 0.506, blue: 0.882),
+        success: Color(red: 0.047, green: 0.639, blue: 0.427),
+        danger: Color(red: 0.855, green: 0.204, blue: 0.263),
+        warning: Color(red: 0.918, green: 0.639, blue: 0.145),
         playerColors: PlayerPalette.colors
     )
 }

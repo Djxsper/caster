@@ -5,7 +5,7 @@ import Foundation
 enum GameMode: String, CaseIterable, Identifiable, Hashable {
     case fingerPicker
     case pinwheel
-    case threeCupShuffle
+    case hotPotato
     case uppercut
     case tapFrenzy
     case chicken
@@ -18,7 +18,7 @@ enum GameMode: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .fingerPicker: return "Finger Picker"
         case .pinwheel: return "Pinwheel"
-        case .threeCupShuffle: return "Three Cup Shuffle"
+        case .hotPotato: return "Hot Potato"
         case .uppercut: return "Uppercut"
         case .tapFrenzy: return "Tap Frenzy"
         case .chicken: return "Chicken"
@@ -27,12 +27,18 @@ enum GameMode: String, CaseIterable, Identifiable, Hashable {
 
     var summary: String {
         switch self {
-        case .fingerPicker: return "Each thumb adds tickets. Fewest tickets lose."
-        case .pinwheel: return "Flick the wheel. Each player wins by being faster."
-        case .threeCupShuffle: return "Find the ball. Fewest tickets lose the round."
-        case .uppercut: return "First tap wins. Each player's odds shift with their reaction."
-        case .tapFrenzy: return "Five seconds of taps. Each tap adds tickets."
-        case .chicken: return "Last to flinch scores. Each player gains tickets from each other."
+        case .fingerPicker:
+            return "Everyone holds a finger down. One gets picked — or split into teams, or put in order."
+        case .pinwheel:
+            return "Spin a wheel of names or anything else you type in. As many entries as you like."
+        case .hotPotato:
+            return "A hidden fuse burns while you pass the phone. Whoever holds it when it blows loses."
+        case .uppercut:
+            return "Hold a finger. When the light flips and the tone hits, lift. Slowest reaction loses."
+        case .tapFrenzy:
+            return "Tap your own circle to shorten your odds. Tap the most and you are still not safe."
+        case .chicken:
+            return "Circles light up one at a time. Let go in time and you are out. Last one left loses."
         }
     }
 
@@ -41,20 +47,19 @@ enum GameMode: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .fingerPicker: return "hand.tap"
         case .pinwheel: return "arrow.triangle.2.circlepath"
-        case .threeCupShuffle: return "cup.and.saucer"
+        case .hotPotato: return "timer"
         case .uppercut: return "bolt.fill"
         case .tapFrenzy: return "hand.tap.fill"
         case .chicken: return "flame.fill"
         }
     }
 
-    /// How long players hold before the round resolves.
-    var holdDuration: TimeInterval {
+    /// The screen, if any, that has to run before the game itself.
+    var setupRoute: Route? {
         switch self {
-        case .fingerPicker, .threeCupShuffle: return 3.0
-        case .pinwheel, .uppercut: return 2.0
-        case .tapFrenzy: return 5.0
-        case .chicken: return 4.0
+        case .hotPotato: return .playerSetup
+        case .pinwheel: return .wheelSetup
+        case .fingerPicker, .uppercut, .tapFrenzy, .chicken: return nil
         }
     }
 }

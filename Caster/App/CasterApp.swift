@@ -4,12 +4,14 @@ import SwiftUI
 struct CasterApp: App {
     @State private var environment = AppEnvironment()
     @State private var gameState = GameState()
+    @State private var wheelStore = WheelStore()
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environment(environment)
                 .environment(gameState)
+                .environment(wheelStore)
         }
     }
 }
@@ -26,13 +28,17 @@ private struct RootView: View {
         LaunchView()
             .environment(\.theme, Theme.forScheme(colorScheme))
             .onChange(of: scenePhase) { _, phase in
-                // Own the haptic engine here rather than in a screen's
-                // `onDisappear`: pushing a destination can tear down the
-                // engine mid-round otherwise.
+                // Own the engines here rather than in a screen's `onDisappear`:
+                // pushing a destination can tear them down mid-round otherwise.
                 switch phase {
-                case .active: environment.hapticEngine.startEngine()
-                case .background, .inactive: environment.hapticEngine.endEngine()
-                @unknown default: break
+                case .active:
+                    environment.hapticEngine.startEngine()
+                    environment.soundEngine.start()
+                case .background, .inactive:
+                    environment.hapticEngine.endEngine()
+                    environment.soundEngine.stop()
+                @unknown default:
+                    break
                 }
             }
     }

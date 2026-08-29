@@ -2,31 +2,41 @@ import SwiftUI
 import UIKit
 
 /// Exposes true multi-touch to SwiftUI. SwiftUI's own `DragGesture` reports a
-/// single finger, which is useless for a game where up to eight thumbs are on
-/// the glass at once.
+/// single finger, which is useless for a game where eight thumbs are on the
+/// glass at once.
 struct MultiTouchView: UIViewRepresentable {
-    /// Set once at creation; the tracker is a reference type, so touch updates
+    /// Set once at creation; the arena is a reference type, so touch updates
     /// flow through it rather than through `@Binding` write-backs.
-    let tracker: TouchTracker
+    let arena: TouchArena
+    /// Turns off the interactive swipe-back gesture while this surface is on
+    /// screen. A thumb parked near the left edge otherwise pops the screen
+    /// mid-round instead of registering as a player.
+    var blocksEdgeSwipe = true
 
     func makeUIView(context: Context) -> MultiTouchWrapper {
         let wrapper = MultiTouchWrapper()
-        wrapper.tracker = tracker
+        wrapper.arena = arena
+        wrapper.blocksEdgeSwipe = blocksEdgeSwipe
         return wrapper
     }
 
     func updateUIView(_ uiView: MultiTouchWrapper, context: Context) {
-        uiView.tracker = tracker
+        uiView.arena = arena
+        uiView.blocksEdgeSwipe = blocksEdgeSwipe
     }
 }
 
 final class MultiTouchWrapper: UIView {
-    weak var tracker: TouchTracker?
+    weak var arena: TouchArena?
+    var blocksEdgeSwipe = true
 
     /// UIKit recycles `UITouch` instances, so map each live touch to an id we
     /// mint ourselves and drop the mapping the moment the touch ends.
     private var identifiers: [ObjectIdentifier: Int] = [:]
     private var nextIdentifier = 0
+    /// Held weakly so the gesture can be handed back even after this view has
+    /// left the hierarchy and lost its responder chain.
+    private weak var suppressedNavigationController: UINavigationController?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -40,6 +50,15 @@ final class MultiTouchWrapper: UIView {
         fatalError("init(coder:) has not been implemented")
     }
 
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window == nil {
+            restoreEdgeSwipe()
+        } else if blocksEdgeSwipe {
+            suppressEdgeSwipe()
+        }
+    }
+
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         super.touchesBegan(touches, with: event)
         for touch in touches {
@@ -47,7 +66,7 @@ final class MultiTouchWrapper: UIView {
             // Reuse the id if this recycled object is somehow still mapped.
             let id = identifiers[key] ?? mintIdentifier()
             identifiers[key] = id
-            tracker?.touchBegan(
+            arena?.touchBegan(
                 id: id,
                 location: touch.location(in: self),
                 timestamp: touch.timestamp
@@ -59,7 +78,7 @@ final class MultiTouchWrapper: UIView {
         super.touchesMoved(touches, with: event)
         for touch in touches {
             guard let id = identifiers[ObjectIdentifier(touch)] else { continue }
-            tracker?.touchMoved(id: id, location: touch.location(in: self))
+            arena?.touchMoved(id: id, location: touch.location(in: self))
         }
     }
 
@@ -69,7 +88,7 @@ final class MultiTouchWrapper: UIView {
     }
 
     /// Cancellation (an incoming call, a system gesture) has to clean up too —
-    /// the original only handled `ended`, leaking a stuck "finger down".
+    /// handling only `ended` leaks a stuck "finger down".
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
         super.touchesCancelled(touches, with: event)
         finish(touches)
@@ -79,12 +98,46 @@ final class MultiTouchWrapper: UIView {
         for touch in touches {
             let key = ObjectIdentifier(touch)
             guard let id = identifiers.removeValue(forKey: key) else { continue }
-            tracker?.touchEnded(id: id, location: touch.location(in: self))
+            arena?.touchEnded(
+                id: id,
+                location: touch.location(in: self),
+                timestamp: touch.timestamp
+            )
         }
     }
 
     private func mintIdentifier() -> Int {
         defer { nextIdentifier &+= 1 }
         return nextIdentifier
+    }
+
+    private func suppressEdgeSwipe() {
+        guard suppressedNavigationController == nil,
+              let navigationController = enclosingNavigationController() else { return }
+        navigationController.interactivePopGestureRecognizer?.isEnabled = false
+        suppressedNavigationController = navigationController
+    }
+
+    private func restoreEdgeSwipe() {
+        suppressedNavigationController?.interactivePopGestureRecognizer?.isEnabled = true
+        suppressedNavigationController = nil
+    }
+
+    /// Walks the responder chain rather than the view hierarchy: SwiftUI hosts
+    /// each screen in its own controller, and the navigation controller is only
+    /// reachable from there.
+    private func enclosingNavigationController() -> UINavigationController? {
+        var responder: UIResponder? = self
+        while let current = responder {
+            if let navigationController = current as? UINavigationController {
+                return navigationController
+            }
+            if let controller = current as? UIViewController,
+               let navigationController = controller.navigationController {
+                return navigationController
+            }
+            responder = current.next
+        }
+        return nil
     }
 }

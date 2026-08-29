@@ -11,6 +11,9 @@ struct Theme {
     let textPrimary: Color
     let textSecondary: Color
     let accent: Color
+    let success: Color
+    let danger: Color
+    let warning: Color
     let playerColors: [Color]
 
     /// Colour for a seat, wrapping around when there are more players than colours.
@@ -37,6 +40,22 @@ enum PlayerPalette {
         Color(red: 0.063, green: 0.690, blue: 0.859),  // 7 — Cyan
         Color(red: 0.392, green: 0.447, blue: 0.509),  // 8 — Slate
     ]
+
+    /// A colour for slice `index` of `total`. The pinwheel is unbounded, so it
+    /// cannot use the fixed eight: past that the hue is spread evenly around the
+    /// wheel instead, which keeps neighbours distinguishable at any count.
+    static func spread(index: Int, total: Int) -> Color {
+        guard total > colors.count else {
+            return colors[abs(index) % colors.count]
+        }
+        let position = Double(abs(index) % max(1, total)) / Double(max(1, total))
+        // Walk the hue with a large stride so adjacent slices are far apart on
+        // the wheel rather than a slow gradient that reads as one blur.
+        let hue = (position * 1.0 + Double(index % 3) * 0.11).truncatingRemainder(dividingBy: 1.0)
+        let saturation = index.isMultiple(of: 2) ? 0.62 : 0.74
+        let brightness = index.isMultiple(of: 3) ? 0.92 : 0.80
+        return Color(hue: hue, saturation: saturation, brightness: brightness)
+    }
 }
 
 private struct ThemeKey: EnvironmentKey {
