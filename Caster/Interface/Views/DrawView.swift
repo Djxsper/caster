@@ -74,18 +74,26 @@ struct DrawView: View {
             .foregroundStyle(theme.textPrimary)
     }
 
+    /// Where seat `index` of `count` sits on the ring, in points from centre.
+    /// Split out of the view body and fully annotated: as one inline
+    /// expression the type checker could not solve it in reasonable time.
+    private static func ringOffset(index: Int, count: Int, radius: CGFloat) -> CGSize {
+        let slice: Double = 2 * Double.pi / Double(max(1, count))
+        // Start a quarter turn back so the first seat sits at the top.
+        let angle: Double = Double(index) * slice - Double.pi / 2
+        return CGSize(width: radius * CGFloat(cos(angle)), height: radius * CGFloat(sin(angle)))
+    }
+
     private func seatRing(in size: CGSize) -> some View {
         let players = gameState.players
-        let radius = max(0, min(size.width, size.height) / 2 - circleDiameter)
+        let radius: CGFloat = max(0, min(size.width, size.height) / 2 - circleDiameter)
+        let count = players.count
 
         // Iterate the players directly: `\.element.id` over `enumerated()` is a
         // key path into a tuple, which Swift does not allow. `seat` already
         // carries the position, so no index is needed.
         return ForEach(players) { player in
-            // Start at -90 degrees so the first seat sits at the top of the ring.
-            let angle = (Double(player.seat) / Double(max(1, players.count))) * 2 * .pi - .pi / 2
-            let offsetX = radius * cos(angle)
-            let offsetY = radius * sin(angle)
+            let offset = Self.ringOffset(index: player.seat, count: count, radius: radius)
 
             Circle()
                 .fill(theme.playerColor(for: player.seat))
@@ -104,7 +112,7 @@ struct DrawView: View {
                         .padding(2)
                 )
                 .opacity(player.isLoss ? 0.4 : 1)
-                .offset(x: offsetX, y: offsetY)
+                .offset(x: offset.width, y: offset.height)
                 .animation(.easeInOut(duration: 0.2), value: player.isHolding)
         }
     }

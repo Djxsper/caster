@@ -37,7 +37,7 @@ final class HapticEngine {
 
         do {
             let engine = try CHHapticEngine()
-            engine.isAutoShutdownEnabled = true
+            engine.isAutoShutdownEnabled = false
             engine.stoppedHandler = { [weak self] _ in
                 Task { @MainActor in self?.isEngineRunning = false }
             }
@@ -64,7 +64,10 @@ final class HapticEngine {
     }
 
     func playFeedback(type: FeedbackType) {
-        guard isEngineRunning, let engine else {
+        if !isEngineRunning, engine != nil {
+            restartIfNeeded()
+        }
+        guard isEngineRunning, let engine = engine else {
             fallbackFeedback(type)
             return
         }
@@ -95,7 +98,7 @@ final class HapticEngine {
     }
 
     private func restartIfNeeded() {
-        guard let engine, !isEngineRunning else { return }
+        guard let engine = engine, !isEngineRunning else { return }
         do {
             try engine.start()
             isEngineRunning = true
