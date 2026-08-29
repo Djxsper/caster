@@ -1,0 +1,25 @@
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xcworkspace/xcuserdata/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# macOS
+.DS_Store
+
+# Python venv used by the graphify tooling
+.venv/
+__pycache__/
+*.pyc
+
+# Generated analysis output
+graphify-out/
+
+# Stray file created by a shell redirect on Windows
+nul

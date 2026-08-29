@@ -1,0 +1,142 @@
+name: Build and screenshot on iOS Simulator
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  simulator:
+    name: Build, boot simulator, capture screens
+    runs-on: macos-15
+    timeout-minutes: 40
+
+    env:
+      BUNDLE_ID: com.example.Caster
+      SCHEME: Caster
+      PROJECT: Caster.xcodeproj
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The project uses objectVersion 77 (file-system synchronized groups),
+      # which needs Xcode 16 or newer to open.
+      - name: Select the newest installed Xcode
+        run: |
+          set -eu
+          NEWEST=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V 2>/dev/null | tail -1)
+          if [ -n "$NEWEST" ]; then
+            echo "Using $NEWEST"
+            sudo xcode-select -s "$NEWEST"
+          fi
+          xcodebuild -version
+          MAJOR=$(xcodebuild -version | head -1 | sed -E 's/Xcode ([0-9]+).*/\1/')
+          if [ "$MAJOR" -lt 16 ]; then
+            echo "::error::Xcode 16+ required (found $MAJOR)."
+            exit 1
+          fi
+
+      - name: Show available simulator runtimes
+        run: xcrun simctl list runtimes
+
+      - name: Build for the simulator
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            2>&1 | tee build.log
+
+      - name: List compiler warnings
+        if: always()
+        run: |
+          echo "--- warnings ---"
+          grep -E "warning:" build.log | sort -u || echo "(none)"
+
+      - name: Pick and boot an iPhone simulator
+        id: sim
+        run: |
+          set -eu
+          # Plain-text parse rather than an embedded python block: a heredoc
+          # inside a YAML block scalar has to stay indented, which python hates.
+          UDID=$(xcrun simctl list devices available | grep "iPhone" | grep -oE "[0-9A-F-]{36}" | head -1)
+          if [ -z "$UDID" ]; then
+            echo "::error::No available iPhone simulator found"
+            xcrun simctl list devices
+            exit 1
+          fi
+          echo "Booting $UDID"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+
+      - name: Install the app
+        run: |
+          set -eu
+          APP=$(find build/Build/Products -maxdepth 3 -name "Caster.app" | head -1)
+          if [ -z "$APP" ]; then
+            echo "::error::Caster.app not found under build/Build/Products"
+            find build/Build/Products -maxdepth 3 || true
+            exit 1
+          fi
+          echo "Installing $APP"
+          xcrun simctl install "${{ steps.sim.outputs.udid }}" "$APP"
+
+      - name: Launch and screenshot every screen
+        run: |
+          set -eu
+          UDID="${{ steps.sim.outputs.udid }}"
+          mkdir -p screenshots
+
+          # $2 is the -screen deep-link key, omitted for the launch screen.
+          # Written without "$@" because macOS ships bash 3.2, where an empty
+          # "$@" trips `set -u`.
+          shoot() {
+            name="$1"
+            screen="${2:-}"
+            xcrun simctl terminate "$UDID" "$BUNDLE_ID" >/dev/null 2>&1 || true
+            if [ -n "$screen" ]; then
+              xcrun simctl launch "$UDID" "$BUNDLE_ID" -screen "$screen"
+            else
+              xcrun simctl launch "$UDID" "$BUNDLE_ID"
+            fi
+            sleep 4
+            xcrun simctl io "$UDID" screenshot "screenshots/$name.png"
+            echo "captured $name"
+          }
+
+          shoot 1-launch
+          shoot 2-mode-select  modeSelect
+          shoot 3-player-setup playerSetup
+          shoot 4-draw         draw
+
+          ls -la screenshots
+
+      - name: Collect crash reports
+        if: always()
+        run: |
+          mkdir -p crashes
+          cp -R "$HOME/Library/Logs/DiagnosticReports/." crashes/ 2>/dev/null || true
+          ls -la crashes || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: caster-screenshots
+          path: screenshots/
+          if-no-files-found: warn
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-log
+          path: |
+            build.log
+            crashes/
+          if-no-files-found: ignore
