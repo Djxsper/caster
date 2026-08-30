@@ -1,9 +1,43 @@
 import SwiftUI
 
-/// Finger Picker with a lever. Claim a circle, then hammer it for five seconds:
-/// every tap drags your odds down. It never drags them to zero — the top tapper
-/// still carries real weight in the draw, so nobody buys their way out.
+/// Finger Picker with a lever. Claim a circle, then hammer it for five seconds
+/// to lean the draw your way.
+///
+/// Which way is up to the table. Set it to **Avoid** and tapping shortens your
+/// odds of being picked; set it to **Win** and tapping lengthens them, for the
+/// times the thing being handed out is worth having. Either way the lever has a
+/// floor and a ceiling: the top tapper still carries real weight and the laziest
+/// player still has a real chance, so no amount of tapping settles it outright.
 struct TapFrenzyView: View {
+    /// What the draw is for, and therefore which way the taps push.
+    private enum Stake: String, CaseIterable, Identifiable {
+        case avoid
+        case win
+
+        var id: String { rawValue }
+
+        var label: String {
+            switch self {
+            case .avoid: return "Avoid It"
+            case .win: return "Win It"
+            }
+        }
+
+        var caption: String {
+            switch self {
+            case .avoid: return "Tap the most to be safest — never safe."
+            case .win: return "Tap the most to be likeliest — never certain."
+            }
+        }
+
+        var verb: String {
+            switch self {
+            case .avoid: return "loses"
+            case .win: return "wins"
+            }
+        }
+    }
+
     private enum Phase {
         case claiming
         case countdown
@@ -17,23 +51,24 @@ struct TapFrenzyView: View {
 
     @State private var arena = TouchArena()
     @State private var phase: Phase = .claiming
+    @State private var stake: Stake = .avoid
     @State private var roundSlots: [Int] = []
     @State private var taps: [Int: Int] = [:]
     @State private var countdownValue = 3
     @State private var timeRemaining: Double = 0
     @State private var spotlightSlot: Int?
-    @State private var loserSlot: Int?
+    /// Whoever the draw landed on. What that means to them depends on `stake`.
+    @State private var pickedSlot: Int?
     @State private var settleTask: Task<Void, Never>?
     @State private var roundTask: Task<Void, Never>?
 
     private let drawEngine = DrawEngine()
     private let settleDuration: Double = 1.5
     private let tapWindow: Double = 5.0
-    /// The floor on a top tapper's weight, and the extra weight a player with
-    /// no taps at all carries. The ratio between them is the most tapping can
-    /// ever buy you: five to one.
+    /// Everyone's floor in the draw, and the most the taps can add on top. The
+    /// ratio between them is all the lever is worth: five to one, either way.
     private let baseWeight = 10
-    private let deficitWeight = 40
+    private let swingWeight = 40
 
     var body: some View {
         ZStack {
@@ -56,8 +91,13 @@ struct TapFrenzyView: View {
             }
 
             VStack(spacing: 12) {
+                stakePanel
+                    .padding(.horizontal, 16)
+                    .opacity(isStakePanelVisible ? 1 : 0)
+                    .allowsHitTesting(isStakePanelVisible)
+                    .animation(.easeInOut(duration: 0.25), value: isStakePanelVisible)
+
                 headline
-                    .padding(.top, 6)
 
                 Spacer(minLength: 0)
 
@@ -78,6 +118,41 @@ struct TapFrenzyView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear(perform: configure)
         .onDisappear(perform: teardown)
+    }
+
+    // MARK: - Controls
+
+    private var isStakePanelVisible: Bool {
+        phase == .claiming && arena.activeCount == 0
+    }
+
+    private var stakePanel: some View {
+        VStack(spacing: 8) {
+            Picker("What the draw decides", selection: $stake) {
+                ForEach(Stake.allCases) { option in
+                    Text(option.label).tag(option)
+                }
+            }
+            .pickerStyle(.segmented)
+            .onChange(of: stake) { _, _ in
+                environment.hapticEngine.playFeedback(type: .light)
+            }
+
+            Text(stake.caption)
+                .font(.system(.caption, design: .rounded))
+                .foregroundStyle(theme.textSecondary)
+                .multilineTextAlignment(.center)
+        }
+        .padding(.vertical, 10)
+        .padding(.horizontal, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(theme.surfaceRaised.opacity(0.92))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(theme.border, lineWidth: 1)
+        )
     }
 
     // MARK: - Play area
@@ -114,8 +189,8 @@ struct TapFrenzyView: View {
                     FingerRing(
                         color: ringColor(for: slot),
                         diameter: 80,
-                        isHighlighted: slot == spotlightSlot || slot == loserSlot,
-                        isDimmed: loserSlot != nil && slot != loserSlot,
+                        isHighlighted: slot == spotlightSlot || slot == pickedSlot,
+                        isDimmed: pickedSlot != nil && slot != pickedSlot,
                         badge: badge(for: slot)
                     )
                     .position(anchor)
@@ -144,7 +219,7 @@ struct TapFrenzyView: View {
 
                     Text("\(Int((row.share * 100).rounded()))%")
                         .font(.system(.subheadline, design: .rounded).weight(.bold))
-                        .foregroundStyle(row.slot == loserSlot ? theme.danger : theme.textSecondary)
+                        .foregroundStyle(row.slot == pickedSlot ? outcomeTint : theme.textSecondary)
                 }
             }
         }
@@ -170,8 +245,8 @@ struct TapFrenzyView: View {
 
     // MARK: - Derived
 
-    /// One row per player, worst odds first. `share` is the real probability of
-    /// being picked, straight from the weights the draw uses.
+    /// One row per player, longest odds first. `share` is the real probability
+    /// of being drawn, taken straight from the weights the draw itself uses.
     struct OddsRow: Identifiable {
         let slot: Int
         let taps: Int
@@ -181,7 +256,7 @@ struct TapFrenzyView: View {
     }
 
     private var oddsRows: [OddsRow] {
-        let weights = lossWeights
+        let weights = drawWeights
         let total = max(1, weights.reduce(0, +))
         let rows = roundSlots.enumerated().map { index, slot in
             OddsRow(
@@ -193,20 +268,30 @@ struct TapFrenzyView: View {
         return rows.sorted { $0.share > $1.share }
     }
 
-    /// Fewer taps means more weight in the draw for the loss. The top tapper
-    /// keeps `baseWeight`, so their odds shrink but never vanish.
-    private var lossWeights: [Int] {
+    /// Weight in the draw, per player, in `roundSlots` order.
+    ///
+    /// Everyone keeps `baseWeight` whatever they do; the taps only decide how
+    /// much of `swingWeight` sits on top. Avoiding, that swing goes to whoever
+    /// tapped *least*; winning, it goes to whoever tapped most.
+    private var drawWeights: [Int] {
         let counts = roundSlots.map { taps[$0] ?? 0 }
         let best = counts.max() ?? 0
         guard best > 0 else { return counts.map { _ in baseWeight } }
+
         return counts.map { count in
-            let deficit = Double(best - count) / Double(best)
-            return baseWeight + Int((Double(deficitWeight) * deficit).rounded())
+            let fraction = stake == .avoid
+                ? Double(best - count) / Double(best)
+                : Double(count) / Double(best)
+            return baseWeight + Int((Double(swingWeight) * fraction).rounded())
         }
     }
 
+    private var outcomeTint: Color {
+        stake == .avoid ? theme.danger : theme.success
+    }
+
     private func ringColor(for slot: Int) -> Color {
-        if let loserSlot { return slot == loserSlot ? theme.danger : theme.playerColor(for: slot) }
+        if let pickedSlot { return slot == pickedSlot ? outcomeTint : theme.playerColor(for: slot) }
         if slot == spotlightSlot { return theme.warning }
         return theme.playerColor(for: slot)
     }
@@ -234,15 +319,15 @@ struct TapFrenzyView: View {
         case .revealing:
             return "Drawing…"
         case .finished:
-            guard let loserSlot else { return "Round complete." }
-            return "Player \(loserSlot + 1) loses."
+            guard let pickedSlot else { return "Round complete." }
+            return "Player \(pickedSlot + 1) \(stake.verb)."
         }
     }
 
     private var statusTint: Color? {
         switch phase {
         case .tapping: return theme.accent
-        case .finished: return theme.danger
+        case .finished: return outcomeTint
         default: return nil
         }
     }
@@ -298,7 +383,7 @@ struct TapFrenzyView: View {
 
         roundSlots = arena.occupiedSlots.sorted()
         taps = [:]
-        loserSlot = nil
+        pickedSlot = nil
         spotlightSlot = nil
         countdownValue = 3
         // From here every touch is a tap for an existing circle, never a new one.
@@ -335,18 +420,18 @@ struct TapFrenzyView: View {
         environment.hapticEngine.playFeedback(type: .light)
     }
 
-    /// A short spotlight sweep before the answer, slowing as it goes. The loser
-    /// is drawn first; the sweep is theatre laid over a decision already made.
+    /// A short spotlight sweep before the answer, slowing as it goes. The draw
+    /// happens first; the sweep is theatre laid over a decision already made.
     private func runReveal() async {
         phase = .revealing
         environment.cue(.medium, .reveal)
 
         guard !roundSlots.isEmpty else { return }
-        let weights = lossWeights
+        let weights = drawWeights
         guard let index = drawEngine.drawIndexWithWeights(weights: weights, limit: roundSlots.count) else {
             return
         }
-        let loser = roundSlots[index]
+        let drawn = roundSlots[index]
 
         var delay: Double = 0.06
         var elapsed: Double = 0
@@ -363,10 +448,10 @@ struct TapFrenzyView: View {
         guard !Task.isCancelled else { return }
         spotlightSlot = nil
         withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
-            loserSlot = loser
+            pickedSlot = drawn
             phase = .finished
         }
-        environment.cue(.heavy, .miss)
+        environment.cue(.heavy, stake == .avoid ? .miss : .safe)
     }
 
     private func resetRound() {
@@ -374,7 +459,7 @@ struct TapFrenzyView: View {
         phase = .claiming
         roundSlots = []
         taps = [:]
-        loserSlot = nil
+        pickedSlot = nil
         spotlightSlot = nil
         timeRemaining = 0
         countdownValue = 3

@@ -24,6 +24,9 @@ struct HotPotatoView: View {
     @State private var fuseTask: Task<Void, Never>?
     @State private var pulse = false
     @State private var passCount = 0
+    /// Real hot potato does not go round the circle in turn — you throw it at
+    /// whoever is not looking. Off by default so the fair rotation stays there.
+    @State private var isRandomOrder = false
 
     var body: some View {
         ZStack {
@@ -38,6 +41,11 @@ struct HotPotatoView: View {
                 StatusLine(text: statusText, emphasis: statusTint)
 
                 Spacer(minLength: 0)
+
+                if phase != .running {
+                    orderToggle
+                        .padding(.horizontal, 16)
+                }
 
                 footer
                     .padding(.horizontal, 16)
@@ -103,6 +111,31 @@ struct HotPotatoView: View {
         .animation(.easeInOut(duration: 0.25), value: holderIndex)
     }
 
+    private var orderToggle: some View {
+        Toggle(isOn: $isRandomOrder) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Random order")
+                    .font(.system(.subheadline, design: .rounded).weight(.semibold))
+                    .foregroundStyle(theme.textPrimary)
+
+                Text(isRandomOrder ? "Throw it at anyone" : "Round the circle in turn")
+                    .font(.caption)
+                    .foregroundStyle(theme.textSecondary)
+            }
+        }
+        .tint(theme.accent)
+        .padding(.vertical, 10)
+        .padding(.horizontal, 14)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(theme.surfaceRaised)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(theme.border, lineWidth: 1)
+        )
+    }
+
     @ViewBuilder
     private var footer: some View {
         switch phase {
@@ -141,7 +174,9 @@ struct HotPotatoView: View {
         case .idle:
             return "Pass the phone around. Do not be holding it at the end."
         case .running:
-            return "Tap anywhere to pass it on"
+            return isRandomOrder
+                ? "Tap to throw it at someone"
+                : "Tap anywhere to pass it on"
         case .exploded:
             return "Boom. \(name(at: loserIndex ?? holderIndex)) loses."
         }
@@ -175,10 +210,21 @@ struct HotPotatoView: View {
     }
 
     private func pass() {
-        guard !gameState.players.isEmpty else { return }
-        holderIndex = (holderIndex + 1) % gameState.players.count
+        let count = gameState.players.count
+        guard count > 0 else { return }
+        holderIndex = isRandomOrder ? randomHolder(besides: holderIndex, of: count)
+                                    : (holderIndex + 1) % count
         passCount += 1
         environment.cue(.medium, .place)
+    }
+
+    /// Uniform over everyone *except* whoever is holding it: handing the potato
+    /// back to yourself is not a pass.
+    private func randomHolder(besides current: Int, of count: Int) -> Int {
+        guard count > 1 else { return current }
+        var next = Int.random(in: 0..<(count - 1))
+        if next >= current { next += 1 }
+        return next
     }
 
     private func startRound() {

@@ -1,9 +1,16 @@
 import SwiftUI
 
-/// The pinwheel's entry editor. Unbounded on purpose — the wheel scales itself
-/// to whatever is in the list rather than the list being clamped to fit a
-/// fixed number of slices.
+/// The pinwheel's entry editor. Wheels are saved and named, so a group can keep
+/// the flatmates, the five-a-side squad and the chore list side by side instead
+/// of retyping one over the other. Entries are unbounded on purpose — the wheel
+/// scales itself to whatever is in the list.
 struct WheelSetupView: View {
+    /// Which name the alert is collecting. One alert serves both jobs.
+    private enum NamePrompt {
+        case newWheel
+        case renameWheel
+    }
+
     @Environment(AppEnvironment.self) private var environment
     @Environment(WheelStore.self) private var wheelStore
     @Environment(GameState.self) private var gameState
@@ -11,6 +18,10 @@ struct WheelSetupView: View {
     @Binding var path: [Route]
 
     @State private var draftEntry = ""
+    @State private var nameDraft = ""
+    @State private var namePrompt: NamePrompt = .newWheel
+    @State private var isNamePromptShown = false
+    @State private var isDeleteConfirmShown = false
     @FocusState private var isAddFieldFocused: Bool
 
     var body: some View {
@@ -19,8 +30,8 @@ struct WheelSetupView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 12) {
+                wheelPicker
                 addRow
-
                 entryList
 
                 PrimaryButton(
@@ -38,32 +49,146 @@ struct WheelSetupView: View {
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 EditButton()
-
-                Menu {
-                    Button {
-                        wheelStore.replaceAll(with: gameState.players.map(\.name))
-                    } label: {
-                        Label("Use player names", systemImage: "person.2")
-                    }
-                    .disabled(gameState.players.isEmpty)
-
-                    Button {
-                        wheelStore.resetToDefaults()
-                    } label: {
-                        Label("Reset to sample names", systemImage: "arrow.counterclockwise")
-                    }
-
-                    Button(role: .destructive) {
-                        wheelStore.replaceAll(with: [])
-                    } label: {
-                        Label("Remove all", systemImage: "trash")
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                }
+                optionsMenu
             }
         }
+        .alert(namePromptTitle, isPresented: $isNamePromptShown) {
+            TextField("Wheel name", text: $nameDraft)
+                .textInputAutocapitalization(.words)
+            Button("Cancel", role: .cancel) { }
+            Button("Save", action: commitNamePrompt)
+        }
+        .alert("Delete this wheel?", isPresented: $isDeleteConfirmShown) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) { wheelStore.deleteSelected() }
+        } message: {
+            Text("\(wheelStore.selectedName) and its \(wheelStore.entries.count) entries will be removed.")
+        }
     }
+
+    // MARK: - Wheel switcher
+
+    private var wheelPicker: some View {
+        Menu {
+            Picker("Saved wheels", selection: wheelSelection) {
+                ForEach(wheelStore.wheels) { wheel in
+                    Text("\(wheel.name)  ·  \(wheel.entries.count)")
+                        .tag(wheel.id)
+                }
+            }
+
+            Divider()
+
+            Button {
+                promptForName(.newWheel)
+            } label: {
+                Label("New wheel", systemImage: "plus.circle")
+            }
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "square.stack.3d.up")
+                    .font(.body)
+                    .foregroundStyle(theme.accent)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(wheelStore.selectedName)
+                        .font(.system(.headline, design: .rounded))
+                        .foregroundStyle(theme.textPrimary)
+                        .lineLimit(1)
+
+                    Text(entryCountLabel)
+                        .font(.caption)
+                        .foregroundStyle(theme.textSecondary)
+                }
+
+                Spacer(minLength: 8)
+
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(theme.textSecondary)
+            }
+            .padding(.vertical, 12)
+            .padding(.horizontal, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(theme.surfaceRaised)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(theme.border, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 16)
+    }
+
+    /// The picker writes straight through to the store, which persists the
+    /// choice — so the app reopens on the wheel that was last in play.
+    private var wheelSelection: Binding<UUID> {
+        Binding(
+            get: { wheelStore.selectedID ?? UUID() },
+            set: { wheelStore.select($0) }
+        )
+    }
+
+    private var entryCountLabel: String {
+        let count = wheelStore.entries.count
+        switch count {
+        case 0: return "No entries yet"
+        case 1: return "1 entry — needs two to spin"
+        default: return "\(count) entries"
+        }
+    }
+
+    private var optionsMenu: some View {
+        Menu {
+            Section {
+                Button {
+                    promptForName(.renameWheel)
+                } label: {
+                    Label("Rename wheel", systemImage: "pencil")
+                }
+
+                Button {
+                    wheelStore.duplicateSelected()
+                } label: {
+                    Label("Duplicate wheel", systemImage: "plus.square.on.square")
+                }
+
+                Button(role: .destructive) {
+                    isDeleteConfirmShown = true
+                } label: {
+                    Label("Delete wheel", systemImage: "trash")
+                }
+                .disabled(!wheelStore.canDeleteWheel)
+            }
+
+            Section {
+                Button {
+                    wheelStore.replaceAll(with: gameState.players.map(\.name))
+                } label: {
+                    Label("Use player names", systemImage: "person.2")
+                }
+                .disabled(gameState.players.isEmpty)
+
+                Button {
+                    wheelStore.resetToDefaults()
+                } label: {
+                    Label("Reset to sample names", systemImage: "arrow.counterclockwise")
+                }
+
+                Button(role: .destructive) {
+                    wheelStore.replaceAll(with: [])
+                } label: {
+                    Label("Remove all entries", systemImage: "xmark.circle")
+                }
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+        }
+    }
+
+    // MARK: - Entries
 
     private var addRow: some View {
         HStack(spacing: 10) {
@@ -94,8 +219,8 @@ struct WheelSetupView: View {
                     .background(theme.accent, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             }
             .buttonStyle(.plain)
-            .disabled(draftEntry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            .opacity(draftEntry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.45 : 1)
+            .disabled(isDraftEmpty)
+            .opacity(isDraftEmpty ? 0.45 : 1)
         }
         .padding(.horizontal, 16)
     }
@@ -148,6 +273,33 @@ struct WheelSetupView: View {
             .submitLabel(.done)
         }
         .listRowBackground(theme.background)
+    }
+
+    // MARK: - Actions
+
+    private var isDraftEmpty: Bool {
+        draftEntry.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var namePromptTitle: String {
+        namePrompt == .newWheel ? "New wheel" : "Rename wheel"
+    }
+
+    private func promptForName(_ prompt: NamePrompt) {
+        namePrompt = prompt
+        nameDraft = prompt == .renameWheel ? wheelStore.selectedName : ""
+        isNamePromptShown = true
+    }
+
+    private func commitNamePrompt() {
+        switch namePrompt {
+        case .newWheel:
+            wheelStore.createWheel(named: nameDraft)
+            isAddFieldFocused = true
+        case .renameWheel:
+            wheelStore.renameSelected(to: nameDraft)
+        }
+        nameDraft = ""
     }
 
     private func commitDraft() {

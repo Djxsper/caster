@@ -36,7 +36,7 @@ enum GameMode: String, CaseIterable, Identifiable, Hashable {
         case .uppercut:
             return "Hold a finger. When the light flips and the tone hits, lift. Slowest reaction loses."
         case .tapFrenzy:
-            return "Tap your own circle to shorten your odds. Tap the most and you are still not safe."
+            return "Claim a circle and hammer it. Decide first whether taps push the draw away from you or towards you."
         case .chicken:
             return "Circles light up one at a time. Let go in time and you are out. Last one left loses."
         }

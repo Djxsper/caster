@@ -4,8 +4,12 @@ import SwiftUI
 /// it goes out and you are safe and out of the game. Too slow and you stay in.
 /// The last one still holding loses.
 ///
-/// The window tightens with every flash, so a round that starts forgiving ends
-/// as a coin-flip on reflexes.
+/// The window opens at 100 ms — quicker than anyone can actually move — and
+/// widens by 50 ms every time a flash is missed. The round therefore calibrates
+/// itself to whoever is playing: it keeps easing until it crosses the fastest
+/// pair of reflexes in the room, that player escapes, and it goes on easing
+/// past everyone else in turn. Whoever it reaches last is the slowest, and they
+/// are the one left holding.
 struct ChickenView: View {
     private enum Phase {
         case gathering
@@ -25,13 +29,26 @@ struct ChickenView: View {
     @State private var lastFlashSlot: Int?
     @State private var flashProgress: Double = 0
     @State private var liftedSlot: Int?
+    /// When that lift happened, from `UITouch.timestamp`. At a 100 ms window,
+    /// noticing a lift in a callback is far too coarse to judge it by.
+    @State private var liftedAt: TimeInterval?
     @State private var loserSlot: Int?
     @State private var waitingOnSlot: Int?
-    @State private var flashCount = 0
+    @State private var reactionWindow: Double = 0.10
     @State private var settleTask: Task<Void, Never>?
     @State private var roundTask: Task<Void, Never>?
 
     private let settleDuration: Double = 1.5
+    /// Deliberately below human reaction time. The opening flashes are meant to
+    /// be unmissable in the bad sense, and the tension comes from watching the
+    /// window creep up towards something anyone can actually hit.
+    private let startWindow: Double = 0.10
+    private let windowStep: Double = 0.05
+    /// Nothing needs a window this wide; it only stops a stuck round crawling.
+    private let maxWindow: Double = 2.5
+    /// Slack for the trip from glass to callback, so a lift that really did
+    /// land inside the window is not thrown out by delivery lag.
+    private let latencyGrace: Double = 0.09
 
     var body: some View {
         ZStack {
@@ -54,6 +71,11 @@ struct ChickenView: View {
             }
 
             VStack(spacing: 12) {
+                if phase == .playing {
+                    windowChip
+                        .padding(.top, 4)
+                }
+
                 Spacer(minLength: 0)
 
                 if !safeSlots.isEmpty {
@@ -99,6 +121,23 @@ struct ChickenView: View {
                 }
             }
         }
+    }
+
+    /// Shows the window widening, so the ramp is legible rather than a mystery.
+    private var windowChip: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "stopwatch")
+                .font(.caption)
+
+            Text("\(Int((reactionWindow * 1000).rounded())) ms to let go")
+                .font(.system(.caption, design: .rounded).weight(.semibold))
+                .monospacedDigit()
+        }
+        .foregroundStyle(theme.textSecondary)
+        .padding(.vertical, 7)
+        .padding(.horizontal, 12)
+        .background(Capsule().fill(theme.surfaceRaised))
+        .animation(.easeInOut(duration: 0.2), value: reactionWindow)
     }
 
     private var safeStrip: some View {
@@ -193,6 +232,7 @@ struct ChickenView: View {
                 // Recorded rather than acted on: the flash loop is what decides
                 // whether this lift landed inside the window.
                 liftedSlot = finger.slot
+                liftedAt = finger.endTime
             case .finished:
                 break
             }
@@ -227,8 +267,9 @@ struct ChickenView: View {
         flashSlot = nil
         lastFlashSlot = nil
         liftedSlot = nil
+        liftedAt = nil
         waitingOnSlot = nil
-        flashCount = 0
+        reactionWindow = startWindow
         arena.acceptsNewSlots = false
         phase = .playing
         environment.cue(.heavy, .pip)
@@ -244,21 +285,26 @@ struct ChickenView: View {
             guard let target = await nextTarget() else { return }
             waitingOnSlot = nil
 
-            let window = max(0.32, 0.62 - Double(flashCount) * 0.03)
-            flashCount += 1
+            let window = reactionWindow
             liftedSlot = nil
+            liftedAt = nil
             flashSlot = target
             lastFlashSlot = target
+            // Same clock as `UITouch.timestamp`, so the comparison in
+            // `qualifies` measures the player and not the main thread.
+            let flashedAt = ProcessInfo.processInfo.systemUptime
             environment.cue(.medium, .pip)
 
             withAnimation(.linear(duration: window)) { flashProgress = 1 }
-            let survived = await waitForLift(of: target, within: window)
+            let survived = await waitForLift(of: target, within: window, flashedAt: flashedAt)
             setFlashProgressWithoutAnimation(0)
             flashSlot = nil
 
             if survived {
                 markSafe(target)
             } else {
+                // Nobody could make that one. Give the next attempt more room.
+                reactionWindow = min(maxWindow, reactionWindow + windowStep)
                 environment.cue(.heavy, .miss)
             }
         }
@@ -286,14 +332,29 @@ struct ChickenView: View {
     }
 
     /// - Returns: true when the flashed slot lifted before the window closed.
-    private func waitForLift(of slot: Int, within window: Double) async -> Bool {
-        let deadline = Date().addingTimeInterval(window)
+    ///
+    /// Waits a little past the window before giving up, because a lift can be
+    /// delivered after its own timestamp. What counts is when the touch says it
+    /// happened, never when this loop got round to seeing it.
+    private func waitForLift(
+        of slot: Int,
+        within window: Double,
+        flashedAt: TimeInterval
+    ) async -> Bool {
+        let deadline = Date().addingTimeInterval(window + latencyGrace)
         while Date() < deadline {
-            if liftedSlot == slot { return true }
-            guard (try? await Task.sleep(for: .milliseconds(12))) != nil else { return false }
+            if qualifies(slot: slot, window: window, flashedAt: flashedAt) { return true }
+            guard (try? await Task.sleep(for: .milliseconds(8))) != nil else { return false }
         }
-        // One last look: a lift landing in the final few milliseconds still counts.
-        return liftedSlot == slot
+        return qualifies(slot: slot, window: window, flashedAt: flashedAt)
+    }
+
+    private func qualifies(slot: Int, window: Double, flashedAt: TimeInterval) -> Bool {
+        guard liftedSlot == slot, let liftedAt else { return false }
+        let elapsed = liftedAt - flashedAt
+        // A lift stamped before the flash is a hand that was already leaving,
+        // not a reaction to anything.
+        return elapsed >= 0 && elapsed <= window
     }
 
     private func markSafe(_ slot: Int) {
@@ -331,9 +392,10 @@ struct ChickenView: View {
         flashSlot = nil
         lastFlashSlot = nil
         liftedSlot = nil
+        liftedAt = nil
         loserSlot = nil
         waitingOnSlot = nil
-        flashCount = 0
+        reactionWindow = startWindow
         setFlashProgressWithoutAnimation(0)
     }
 }
