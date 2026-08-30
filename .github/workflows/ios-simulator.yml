@@ -12,7 +12,7 @@ jobs:
     timeout-minutes: 40
 
     env:
-      BUNDLE_ID: com.johndoe.Caster
+      BUNDLE_ID: com.jesperhaafkes.Caster
       SCHEME: Caster
       PROJECT: Caster.xcodeproj
 

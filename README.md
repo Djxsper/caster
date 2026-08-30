@@ -83,7 +83,7 @@ free Apple ID at install time. [AltStore](https://altstore.io) and
 3. Plug in your iPhone and pick it as the run destination.
 4. Select the **Caster** target → **Signing & Capabilities** → tick *Automatically
    manage signing* and choose your own Apple ID team. Change the bundle identifier
-   from `com.johndoe.Caster` to something of your own, e.g. `com.yourname.Caster`.
+   from `com.jesperhaafkes.Caster` to something of your own, e.g. `com.yourname.Caster`.
 5. Press **Run**. On first launch the iPhone will refuse to open it until you
    trust the certificate: **Settings → General → VPN & Device Management → your
    Apple ID → Trust**.
