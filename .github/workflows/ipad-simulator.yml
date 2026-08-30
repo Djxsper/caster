@@ -1,0 +1,145 @@
+name: Screenshot on iPad Simulator
+
+# On demand only. ios-simulator.yml is the run that gates every push; this one
+# exists to see how the layout holds up on a much larger screen, so paying for
+# it on every commit would be waste.
+#
+#     gh workflow run ipad-simulator.yml
+#
+# Portrait only: simctl has no orientation command, and rotating through
+# Simulator.app needs accessibility permissions a hosted runner will not grant.
+
+on:
+  workflow_dispatch:
+    inputs:
+      device:
+        description: "Simulator to prefer, e.g. iPad Pro"
+        required: false
+        default: "iPad Pro"
+      appearance:
+        description: "light or dark"
+        required: false
+        default: "light"
+
+jobs:
+  ipad:
+    name: Build, boot an iPad, capture screens
+    runs-on: macos-15
+    timeout-minutes: 40
+
+    env:
+      BUNDLE_ID: com.jesperhaafkes.Caster
+      SCHEME: Caster
+      PROJECT: Caster.xcodeproj
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # objectVersion 77 (file-system synchronized groups) needs Xcode 16+.
+      - name: Select the newest installed Xcode
+        run: |
+          set -eu
+          NEWEST=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V 2>/dev/null | tail -1)
+          if [ -n "$NEWEST" ]; then
+            echo "Using $NEWEST"
+            sudo xcode-select -s "$NEWEST"
+          fi
+          xcodebuild -version
+
+      - name: Build for the simulator
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            2>&1 | tail -20
+
+      - name: Pick and boot an iPad simulator
+        id: sim
+        run: |
+          set -eu
+          PREFER="${{ github.event.inputs.device || 'iPad Pro' }}"
+          LIST=$(xcrun simctl list devices available)
+
+          LINE=$(echo "$LIST" | grep "$PREFER" | head -1 || true)
+          if [ -z "$LINE" ]; then
+            echo "No simulator matching '$PREFER', falling back to any iPad."
+            LINE=$(echo "$LIST" | grep "iPad" | head -1 || true)
+          fi
+          if [ -z "$LINE" ]; then
+            echo "::error::No available iPad simulator found"
+            echo "$LIST"
+            exit 1
+          fi
+
+          UDID=$(echo "$LINE" | grep -oE "[0-9A-F-]{36}" | head -1)
+          NAME=$(echo "$LINE" | sed -E 's/^ *(.*) \([0-9A-F-]{36}\).*/\1/')
+          echo "Booting $NAME ($UDID)"
+
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl ui "$UDID" appearance "${{ github.event.inputs.appearance || 'light' }}"
+          xcrun simctl status_bar "$UDID" override \
+            --time "9:41" --batteryState charged --batteryLevel 100 --wifiBars 3
+
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Install the app
+        run: |
+          set -eu
+          APP=$(find build/Build/Products -maxdepth 3 -name "Caster.app" | head -1)
+          if [ -z "$APP" ]; then
+            echo "::error::Caster.app not found under build/Build/Products"
+            exit 1
+          fi
+          xcrun simctl install "${{ steps.sim.outputs.udid }}" "$APP"
+
+      - name: Launch and screenshot every screen
+        run: |
+          set -eu
+          UDID="${{ steps.sim.outputs.udid }}"
+          mkdir -p screenshots
+
+          # $2 is the -screen deep-link key, omitted for the launch screen.
+          # Written without "$@" because macOS ships bash 3.2, where an empty
+          # "$@" trips `set -u`.
+          shoot() {
+            name="$1"
+            screen="${2:-}"
+            xcrun simctl terminate "$UDID" "$BUNDLE_ID" >/dev/null 2>&1 || true
+            if [ -n "$screen" ]; then
+              xcrun simctl launch "$UDID" "$BUNDLE_ID" -screen "$screen"
+            else
+              xcrun simctl launch "$UDID" "$BUNDLE_ID"
+            fi
+            sleep 4
+            xcrun simctl io "$UDID" screenshot "screenshots/$name.png"
+            echo "captured $name"
+          }
+
+          shoot 1-launch
+          shoot 2-mode-select   modeSelect
+          shoot 3-player-setup  playerSetup
+          shoot 4-wheel-setup   wheelSetup
+          shoot 5-finger-picker fingerPicker
+          shoot 6-pinwheel      pinwheel
+          shoot 7-hot-potato    hotPotato
+          shoot 8-uppercut      uppercut
+          shoot 9-tap-frenzy    tapFrenzy
+          shoot 10-chicken      chicken
+
+          echo "--- ${{ steps.sim.outputs.name }} ---"
+          sips -g pixelWidth -g pixelHeight screenshots/2-mode-select.png
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: caster-ipad-screenshots
+          path: screenshots/
+          if-no-files-found: warn
