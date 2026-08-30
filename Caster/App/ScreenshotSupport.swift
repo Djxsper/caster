@@ -6,7 +6,7 @@ import Foundation
 ///
 /// Debug builds only — this whole file compiles out of Release.
 ///
-///     xcrun simctl launch <device> com.example.Caster -screen chicken
+///     xcrun simctl launch <device> com.johndoe.Caster -screen chicken
 enum ScreenshotSupport {
     /// The screen named on the command line, if any.
     private static var requestedKey: String? {
