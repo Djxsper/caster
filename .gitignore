@@ -24,5 +24,6 @@ graphify-out/
 # Stray file created by a shell redirect on Windows
 nul
 
-# Screenshots pulled down from CI
-screenshots/
+# Screenshots pulled down from CI. Anchored to the repo root on purpose:
+# unanchored, it also swallows docs/screenshots, which the README needs.
+/screenshots/
