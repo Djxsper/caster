@@ -1,114 +1,39 @@
 import SwiftUI
 
+/// Name entry for the modes that address people by name. The list itself is
+/// `RosterEditor`, which reads and writes `RosterStore` — so leaving this
+/// screen, by the button or by a back-swipe, keeps every name that was typed.
 struct PlayerSetupView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(GameState.self) private var gameState
+    @Environment(RosterStore.self) private var rosterStore
     @Environment(\.theme) private var theme
     @Binding var path: [Route]
-
-    /// `Slider` needs a floating-point binding, so the count is stored as a
-    /// `Double` and rounded on read.
-    @State private var playerCountValue = 4.0
-    /// Always `PlayerLimits.maximum` long, so indexing never runs off the end when
-    /// the slider goes past the number of names that were seeded.
-    @State private var playerNames: [String] = (0..<PlayerLimits.maximum).map { "Player \($0 + 1)" }
-    @FocusState private var focusedField: Int?
-
-    private var playerCount: Int {
-        min(max(Int(playerCountValue.rounded()), PlayerLimits.minimum), PlayerLimits.maximum)
-    }
 
     var body: some View {
         ZStack {
             theme.background
                 .ignoresSafeArea()
 
-            VStack(spacing: 16) {
-                Text("How many players?")
-                    .font(.system(.title2, design: .rounded))
-                    .fontWeight(.bold)
-                    .foregroundStyle(theme.textPrimary)
+            VStack(spacing: 12) {
+                RosterEditor()
 
-                Text("\(playerCount)")
-                    .font(.system(.largeTitle, design: .rounded))
-                    .fontWeight(.bold)
-                    .foregroundStyle(theme.accent)
-                    .contentTransition(.numericText())
-                    .animation(.snappy, value: playerCount)
-
-                Slider(
-                    value: $playerCountValue,
-                    in: Double(PlayerLimits.minimum)...Double(PlayerLimits.maximum),
-                    step: 1
-                ) {
-                    Text("Players")
-                } minimumValueLabel: {
-                    Text("\(PlayerLimits.minimum)")
-                } maximumValueLabel: {
-                    Text("\(PlayerLimits.maximum)")
-                }
-                .tint(theme.accent)
+                PrimaryButton(
+                    title: "Start Game",
+                    isEnabled: rosterStore.canPlay,
+                    action: startGame
+                )
                 .padding(.horizontal, 16)
-
-                Divider()
-
-                ScrollView {
-                    VStack(spacing: 8) {
-                        ForEach(0..<playerCount, id: \.self) { index in
-                            nameRow(index: index)
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                }
-
-                PrimaryButton(title: "Start Game", action: startGame)
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 24)
+                .padding(.bottom, 24)
             }
             .padding(.top, 12)
         }
-        .navigationTitle("Setup")
+        .navigationTitle("Players")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .keyboard) {
-                Button("Done") { focusedField = nil }
-            }
-        }
-    }
-
-    private func nameRow(index: Int) -> some View {
-        HStack(spacing: 12) {
-            Circle()
-                .fill(theme.playerColor(for: index))
-                .frame(width: 28, height: 28)
-
-            TextField("Player \(index + 1)", text: $playerNames[index])
-                .font(.body)
-                .foregroundStyle(theme.textPrimary)
-                .textInputAutocapitalization(.words)
-                .autocorrectionDisabled()
-                .submitLabel(.done)
-                .focused($focusedField, equals: index)
-
-            Spacer(minLength: 0)
-        }
-        .padding(.vertical, 10)
-        .padding(.horizontal, 16)
-        .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(theme.surfaceRaised)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .stroke(theme.border, lineWidth: 1)
-        )
     }
 
     private func startGame() {
-        focusedField = nil
-        // Write into the shared state instead of a throwaway local instance —
-        // this is what the game screen actually reads.
-        gameState.configurePlayers(count: playerCount, names: playerNames)
+        gameState.adoptRoster(rosterStore.names)
         environment.hapticEngine.playFeedback(type: .heavy)
         path.append(.game(gameState.currentMode))
     }
@@ -119,5 +44,7 @@ struct PlayerSetupView: View {
         PlayerSetupView(path: .constant([]))
             .environment(AppEnvironment())
             .environment(GameState())
+            .environment(RosterStore())
+            .environment(WheelStore())
     }
 }

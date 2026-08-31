@@ -16,6 +16,7 @@ struct HotPotatoView: View {
 
     @Environment(AppEnvironment.self) private var environment
     @Environment(GameState.self) private var gameState
+    @Environment(RosterStore.self) private var rosterStore
     @Environment(\.theme) private var theme
 
     @State private var phase: Phase = .idle
@@ -27,6 +28,7 @@ struct HotPotatoView: View {
     /// Real hot potato does not go round the circle in turn — you throw it at
     /// whoever is not looking. Off by default so the fair rotation stays there.
     @State private var isRandomOrder = false
+    @State private var isRosterShown = false
 
     var body: some View {
         ZStack {
@@ -57,9 +59,27 @@ struct HotPotatoView: View {
         .onTapGesture(perform: handleScreenTap)
         .navigationTitle(GameMode.hotPotato.title)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                RosterToolbarButton(isPresented: $isRosterShown)
+            }
+        }
+        .rosterSheet(isPresented: $isRosterShown)
         .onAppear {
             environment.hapticEngine.startEngine()
             environment.soundEngine.start()
+            // Pulled from the store rather than trusted from the setup screen,
+            // so the names are right however this screen was reached.
+            gameState.adoptRoster(rosterStore.names)
+        }
+        // Editing the roster mid-session — someone arrives, someone leaves —
+        // lands here without ending the round.
+        .onChange(of: rosterStore.names) { _, names in
+            gameState.adoptRoster(names)
+            // A roster that shrank can leave the potato with nobody holding it.
+            let count = gameState.players.count
+            if count > 0, holderIndex >= count { holderIndex = count - 1 }
+            if let loser = loserIndex, loser >= count { loserIndex = nil }
         }
         .onDisappear {
             fuseTask?.cancel()
@@ -168,7 +188,7 @@ struct HotPotatoView: View {
 
     private var statusText: String {
         guard !gameState.players.isEmpty else {
-            return "Go back and add some players first."
+            return "Tap the people button up top to add some players."
         }
         switch phase {
         case .idle:
@@ -289,5 +309,7 @@ struct HotPotatoView: View {
         HotPotatoView()
             .environment(AppEnvironment())
             .environment(GameState())
+            .environment(RosterStore())
+            .environment(WheelStore())
     }
 }

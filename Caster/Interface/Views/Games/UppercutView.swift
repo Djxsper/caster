@@ -15,6 +15,8 @@ struct UppercutView: View {
     }
 
     @Environment(AppEnvironment.self) private var environment
+    @Environment(GameState.self) private var gameState
+    @Environment(RosterStore.self) private var rosterStore
     @Environment(\.theme) private var theme
 
     @State private var arena = TouchArena()
@@ -26,6 +28,7 @@ struct UppercutView: View {
     @State private var armTask: Task<Void, Never>?
     @State private var cueTask: Task<Void, Never>?
     @State private var timeoutTask: Task<Void, Never>?
+    @State private var isRosterShown = false
 
     /// How long everybody has to be settled before the round arms itself.
     private let settleDuration: Double = 1.2
@@ -63,7 +66,16 @@ struct UppercutView: View {
         }
         .navigationTitle(GameMode.uppercut.title)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                RosterToolbarButton(isPresented: $isRosterShown)
+            }
+        }
+        .rosterSheet(isPresented: $isRosterShown)
         .onAppear(perform: configure)
+        .onChange(of: rosterStore.names) { _, names in
+            gameState.adoptRoster(names)
+        }
         .onDisappear(perform: teardown)
     }
 
@@ -126,9 +138,11 @@ struct UppercutView: View {
                         .fill(theme.playerColor(for: entry.slot))
                         .frame(width: 14, height: 14)
 
-                    Text("Player \(entry.slot + 1)")
+                    Text(gameState.name(forSlot: entry.slot))
                         .font(.system(.subheadline, design: .rounded))
                         .foregroundStyle(theme.textPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
 
                     Spacer(minLength: 8)
 
@@ -257,13 +271,13 @@ struct UppercutView: View {
             return "LIFT!"
         case .finished:
             if let falseStartSlot {
-                return "Player \(falseStartSlot + 1) went early and loses."
+                return "\(gameState.name(forSlot: falseStartSlot)) went early and loses."
             }
             guard let winner = fastestSlot else { return "Nobody reacted." }
             if let loser = slowestSlot, loser != winner {
-                return "Player \(winner + 1) wins. Player \(loser + 1) loses."
+                return "\(gameState.name(forSlot: winner)) wins. \(gameState.name(forSlot: loser)) loses."
             }
-            return "Player \(winner + 1) wins."
+            return "\(gameState.name(forSlot: winner)) wins."
         }
     }
 
@@ -280,6 +294,9 @@ struct UppercutView: View {
     private func configure() {
         environment.hapticEngine.startEngine()
         environment.soundEngine.start()
+        // Seats are handed out by where a finger lands, so the roster is only a
+        // source of names here — there is no setup step to get through first.
+        gameState.adoptRoster(rosterStore.names)
         arena.slotPolicy = .sticky(radius: 90)
         arena.reset()
 
@@ -401,5 +418,8 @@ struct UppercutView: View {
     NavigationStack {
         UppercutView()
             .environment(AppEnvironment())
+            .environment(GameState())
+            .environment(RosterStore())
+            .environment(WheelStore())
     }
 }

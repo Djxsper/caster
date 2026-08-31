@@ -5,6 +5,7 @@ struct CasterApp: App {
     @State private var environment = AppEnvironment()
     @State private var gameState = GameState()
     @State private var wheelStore = WheelStore()
+    @State private var rosterStore = RosterStore()
 
     var body: some Scene {
         WindowGroup {
@@ -12,6 +13,7 @@ struct CasterApp: App {
                 .environment(environment)
                 .environment(gameState)
                 .environment(wheelStore)
+                .environment(rosterStore)
         }
     }
 }

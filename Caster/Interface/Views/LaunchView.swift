@@ -15,6 +15,7 @@ enum Route: Hashable {
 struct LaunchView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(GameState.self) private var gameState
+    @Environment(RosterStore.self) private var rosterStore
     @Environment(\.theme) private var theme
     @State private var path: [Route] = []
     @State private var isPulsing = false
@@ -85,10 +86,11 @@ struct LaunchView: View {
         let route = ScreenshotSupport.requestedRoute
         if !route.isEmpty {
             if ScreenshotSupport.needsSeededPlayers {
-                gameState.configurePlayers(
-                    count: ScreenshotSupport.sampleNames.count,
-                    names: ScreenshotSupport.sampleNames
-                )
+                // Seeded into the store, not just `GameState`: the games adopt
+                // the saved roster when they appear, which would otherwise
+                // overwrite these with whatever the simulator had on disk.
+                rosterStore.replaceAll(with: ScreenshotSupport.sampleNames)
+                gameState.adoptRoster(ScreenshotSupport.sampleNames)
             }
             if let mode = ScreenshotSupport.requestedMode {
                 gameState.currentMode = mode
@@ -137,4 +139,5 @@ struct GameHostView: View {
         .environment(AppEnvironment())
         .environment(GameState())
         .environment(WheelStore())
+        .environment(RosterStore())
 }

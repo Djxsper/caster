@@ -13,7 +13,7 @@ struct WheelSetupView: View {
 
     @Environment(AppEnvironment.self) private var environment
     @Environment(WheelStore.self) private var wheelStore
-    @Environment(GameState.self) private var gameState
+    @Environment(RosterStore.self) private var rosterStore
     @Environment(\.theme) private var theme
     @Binding var path: [Route]
 
@@ -165,11 +165,13 @@ struct WheelSetupView: View {
 
             Section {
                 Button {
-                    wheelStore.replaceAll(with: gameState.players.map(\.name))
+                    wheelStore.replaceAll(with: rosterStore.names)
                 } label: {
                     Label("Use player names", systemImage: "person.2")
                 }
-                .disabled(gameState.players.isEmpty)
+                // Read from the saved roster rather than the in-play players,
+                // so this works before a name-based game has ever been started.
+                .disabled(rosterStore.names.isEmpty)
 
                 Button {
                     wheelStore.resetToDefaults()
@@ -323,7 +325,7 @@ struct WheelSetupView: View {
     NavigationStack {
         WheelSetupView(path: .constant([]))
             .environment(AppEnvironment())
-            .environment(GameState())
             .environment(WheelStore())
+            .environment(RosterStore())
     }
 }

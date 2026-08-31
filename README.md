@@ -30,7 +30,7 @@ no accounts and no network.
 | 👆 | **Finger Picker** | Everyone holds a finger down. After three still seconds the app picks somebody — or splits the table into teams, or puts everyone in an order. |
 | 🎡 | **Pinwheel** | Spin a wheel of names, chores, or anything else you type in. Unlimited entries, and wheels are saved and named so you can keep several. |
 | ⏲️ | **Hot Potato** | A hidden fuse burns while the phone goes round. Tap to pass. Whoever is holding it when it blows loses. |
-| ⚡ | **Uppercut** | Hold a finger. When the light flips and the tone hits, lift. Fastest wins, slowest loses, and going early ends it on the spot. |
+| ⚡ | **Uppercut** | Hold a finger. When the light flips and the tone hits, lift. Fastest wins, slowest loses, and going early ends it on the spot. Calls people by name when a roster is saved. |
 | 🔨 | **Tap Frenzy** | Claim a circle and hammer it for five seconds to lean the draw your way — towards you or away from you, your choice. |
 | 🔥 | **Chicken** | Circles light up one at a time. Let go in time and you are out safe. The window starts at 100 ms and eases until somebody can beat it. Last one still holding loses. |
 
@@ -115,7 +115,7 @@ No package manager, no dependencies, no generated files — clone and open.
 ```
 Caster/
 ├── App/            Entry point, shared services, CI deep-link support
-├── Domain/         Game modes, players, saved wheels, the weighted draw
+├── Domain/         Game modes, saved rosters and wheels, the weighted draw
 ├── Interface/
 │   ├── Audio/      Cue tones, synthesised at launch (no audio assets ship)
 │   ├── Components/ Buttons, finger rings, the shared touch surface
@@ -142,6 +142,11 @@ A few things worth knowing before you change something:
 - **Tapping never buys certainty.** In Tap Frenzy everybody keeps a floor in the
   draw whatever they do, so the gap between the hardest tapper and the laziest is
   capped at five to one, in either direction.
+- **Nothing anybody typed lives in a view.** Names go to `RosterStore` and wheel
+  entries to `WheelStore`, both written to `UserDefaults` on every keystroke and
+  both keeping several named sets side by side. A list held in a screen's
+  `@State` is a list that a back-swipe throws away — which is exactly what used
+  to happen to twelve hand-typed names.
 
 ### CI
 

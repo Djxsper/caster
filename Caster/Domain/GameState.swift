@@ -27,6 +27,43 @@ final class GameState {
         }
     }
 
+    /// Seats the saved roster. Idempotent: when the names already match, the
+    /// existing `Player` objects are left alone, so a game can call this on
+    /// every appearance without resetting the round it is in the middle of.
+    ///
+    /// When they differ, anyone still on the roster carries their win/loss
+    /// tally over to their new seat — editing one name should not wipe the
+    /// running score for everybody else.
+    func adoptRoster(_ names: [String]) {
+        let seated = Array(
+            names
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+                .prefix(PlayerLimits.maximum)
+        )
+
+        guard seated != players.map(\.name) else { return }
+
+        // Keyed by name rather than by seat: the point is to follow a person
+        // through a reorder, and a repeated name can only match one of them.
+        let previous = Dictionary(players.map { ($0.name, $0) }, uniquingKeysWith: { first, _ in first })
+        players = seated.enumerated().map { seat, name in
+            let player = Player(seat: seat, name: name)
+            if let earlier = previous[name] {
+                player.winCount = earlier.winCount
+                player.lossCount = earlier.lossCount
+            }
+            return player
+        }
+    }
+
+    /// The name for a touch slot. Falls back to the seat number when more
+    /// fingers are on the glass than there are names on the roster, so the
+    /// touch games stay playable without anyone having typed anything.
+    func name(forSlot slot: Int) -> String {
+        players.indices.contains(slot) ? players[slot].name : "Player \(slot + 1)"
+    }
+
     func recordLoss(for player: Player) {
         player.lossCount += 1
         for other in players where other !== player {
