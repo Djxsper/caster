@@ -1,0 +1,71 @@
+name: Build and test on Android
+
+# The counterpart to ios-simulator.yml. Runs on Linux, which is both faster and
+# far cheaper than a macOS runner, because nothing here needs Xcode.
+#
+# Note what this cannot prove. An emulator has no real multi-touch — synthetic
+# events give you one finger — so the slot tracking, reaction timing, haptics
+# and audio are only ever verified on a device. TouchArenaTest is what stands in
+# for that here, and it is a unit test on purpose.
+
+on:
+  push:
+    paths:
+      - "android/**"
+      - ".github/workflows/android.yml"
+  pull_request:
+    paths:
+      - "android/**"
+      - ".github/workflows/android.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Unit tests, lint, debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    defaults:
+      run:
+        working-directory: android
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Unit tests
+        run: ./gradlew test --no-daemon
+
+      - name: Lint
+        run: ./gradlew lint --no-daemon
+
+      - name: Build the debug APK
+        run: ./gradlew assembleDebug --no-daemon
+
+      # Uploaded so a change can be installed on a real phone without a local
+      # toolchain — which, per the note at the top, is the only way to check the
+      # parts that matter.
+      - name: Upload the APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: caster-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      - name: Upload the reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: caster-android-reports
+          path: |
+            android/app/build/reports/tests/
+            android/app/build/reports/lint-results-debug.html
+          if-no-files-found: ignore

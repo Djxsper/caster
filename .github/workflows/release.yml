@@ -111,7 +111,6 @@ jobs:
           them at once; AltStore and SideStore can refresh automatically over
           Wi-Fi. A paid developer account extends this to a year.
 
-          No Android build exists — see the README for why.
           NOTES
 
           gh release create "$TAG" \

@@ -13,6 +13,7 @@ no accounts and no network.
 [![Build](https://github.com/Djxsper/caster/actions/workflows/ios-simulator.yml/badge.svg)](https://github.com/Djxsper/caster/actions/workflows/ios-simulator.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-iOS%2017%2B-lightgrey.svg)](#install-on-iphone-or-ipad)
+[![Android](https://img.shields.io/badge/Android-8.0%2B-lightgrey.svg)](#android)
 
 <img src="docs/screenshots/mode-select.png" width="200" alt="Game mode list">
 <img src="docs/screenshots/pinwheel.png" width="200" alt="Pinwheel">
@@ -92,19 +93,34 @@ free Apple ID at install time. [AltStore](https://altstore.io) and
 
 ## Android
 
-**There is no Android version, and this repository cannot produce one.**
+There is an Android version, in [`android/`](android). It is a second native app
+— Kotlin with Jetpack Compose — not a wrapper or a port of the binary, and it is
+not on Google Play yet.
 
-Caster is a native Apple app: the interface is SwiftUI, the multi-touch layer is
-UIKit, the buzzes are Core Haptics and the tones are AVFoundation. None of those
-frameworks exist on Android, and there is no compatibility layer or converter that
-changes that. Anyone offering you a `.apk` of this app made it themselves, and it
-is not from here.
+The two apps share no code, and that is not laziness. Caster's interface is
+SwiftUI, its multi-touch layer is UIKit, its buzzes are Core Haptics and its tones
+are AVFoundation; none of those exist on Android. Tools that promise one codebase
+break on exactly this app. [Skip](https://skip.dev) maps SwiftUI to Compose but
+not UIKit views, and does not cover Core Haptics or AVAudioEngine. The official
+[Swift SDK for Android](https://www.swift.org/blog/exploring-the-swift-sdk-for-android/)
+(Swift 6.3) compiles Swift libraries, but SwiftUI does not run there. So the game
+rules were written twice, deliberately, and the two `Domain` layers are kept in
+step by hand.
 
-Roughly a tenth of the code — the game rules in [`Caster/Domain`](Caster/Domain),
-which is deliberately free of any UI framework — would port. Everything else
-would be a rewrite in Kotlin with Jetpack Compose, or in something cross-platform
-like Flutter. That is a real project, not a build setting. Contributions welcome
-if anybody fancies it.
+Build it with Android Studio, or:
+
+```sh
+cd android
+./gradlew test          # unit tests, including the touch-slot suite
+./gradlew assembleDebug # APK in app/build/outputs/apk/debug/
+```
+
+Requires **Android 8.0 (API 26)** or newer.
+
+As with iOS, an emulator can only prove it compiles. Synthetic events give you one
+finger, so the slot tracking, reaction timing and haptics are only ever verified
+on a real device — which is what [`TouchArenaTest`](android/app/src/test/java/com/jesperhaafkes/caster/TouchArenaTest.kt)
+exists to compensate for.
 
 ---
 

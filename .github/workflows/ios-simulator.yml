@@ -1,8 +1,18 @@
 name: Build and screenshot on iOS Simulator
 
 on:
+  # Scoped on purpose. This job books a macOS runner for up to 40 minutes, and
+  # nothing under android/ can affect it — see android.yml for that side.
   push:
+    paths-ignore:
+      - "android/**"
+      - "**.md"
+      - "docs/**"
   pull_request:
+    paths-ignore:
+      - "android/**"
+      - "**.md"
+      - "docs/**"
   workflow_dispatch:
 
 jobs:

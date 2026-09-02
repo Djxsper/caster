@@ -1,0 +1,15 @@
+*.iml
+.gradle/
+.kotlin/
+.DS_Store
+
+# Unanchored on purpose: `/build` would only catch android/build and leave
+# android/app/build committable the moment the root .gitignore stops matching it.
+build/
+/captures
+.externalNativeBuild
+.cxx
+
+# Holds sdk.dir, which is a path on whoever's machine ran the build.
+local.properties
+/.idea/

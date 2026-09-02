@@ -1,0 +1,20 @@
+# Let git normalise text in the repository, and decide per-platform on checkout.
+* text=auto
+
+# The Gradle wrapper is executed by /bin/sh on the CI runner. A CRLF checkout
+# gives "bad interpreter: /bin/sh^M", so pin it to LF everywhere regardless of
+# core.autocrlf on the machine doing the clone.
+gradlew text eol=lf
+*.sh text eol=lf
+
+# Windows-only, and genuinely wants CRLF.
+gradlew.bat text eol=crlf
+
+# Binaries git must never touch.
+*.png binary
+*.jar binary
+*.ipa binary
+*.apk binary
+*.aab binary
+*.keystore binary
+*.jks binary
