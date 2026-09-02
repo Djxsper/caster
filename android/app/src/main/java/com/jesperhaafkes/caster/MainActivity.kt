@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -17,6 +18,9 @@ import com.jesperhaafkes.caster.domain.GameState
 import com.jesperhaafkes.caster.domain.RosterStore
 import com.jesperhaafkes.caster.domain.WheelStore
 import com.jesperhaafkes.caster.ui.screens.LaunchScreen
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
+import com.jesperhaafkes.caster.ui.theme.materialScheme
 import androidx.compose.material3.LocalTextStyle
 import com.jesperhaafkes.caster.ui.theme.CasterFontFamily
 import com.jesperhaafkes.caster.ui.theme.LocalTheme
@@ -24,6 +28,9 @@ import com.jesperhaafkes.caster.ui.theme.themeForScheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Must run before super.onCreate so the system splash hands over to the
+        // app theme rather than flashing between the two.
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent { CasterApp() }
@@ -75,17 +82,22 @@ fun CasterApp() {
         }
     }
 
-    CompositionLocalProvider(
-        LocalTheme provides themeForScheme(),
-        // material3's Text merges its `style` argument over LocalTextStyle, and
-        // nothing in the app names a font family, so providing it once here is
-        // what puts the rounded face on every label.
-        LocalTextStyle provides LocalTextStyle.current.copy(fontFamily = CasterFontFamily),
-        LocalAppEnvironment provides environment,
-        LocalGameState provides gameState,
-        LocalWheelStore provides wheelStore,
-        LocalRosterStore provides rosterStore,
-    ) {
-        LaunchScreen()
+    val theme = themeForScheme()
+    MaterialTheme(colorScheme = theme.materialScheme(isSystemInDarkTheme())) {
+        CompositionLocalProvider(
+            LocalTheme provides theme,
+            // Only covers a Text that omits `style` entirely. Every call site in
+            // this app passes an explicit TextStyle, which replaces this rather
+            // than merging with it, so the rounded face is named at each of them
+            // instead - see Type.kt. This is here for anything added later that
+            // does not.
+            LocalTextStyle provides LocalTextStyle.current.copy(fontFamily = CasterFontFamily),
+            LocalAppEnvironment provides environment,
+            LocalGameState provides gameState,
+            LocalWheelStore provides wheelStore,
+            LocalRosterStore provides rosterStore,
+        ) {
+            LaunchScreen()
+        }
     }
 }

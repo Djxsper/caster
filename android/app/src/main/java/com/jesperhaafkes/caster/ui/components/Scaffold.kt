@@ -65,7 +65,7 @@ fun CasterScreen(
         ) {
             Box(Modifier.width(48.dp)) {
                 if (onBack != null) {
-                    BackChevron(onBack)
+                    BackArrow(onBack)
                 }
             }
 
@@ -108,7 +108,7 @@ fun CasterScreen(
 }
 
 @Composable
-private fun BackChevron(onBack: () -> Unit) {
+private fun BackArrow(onBack: () -> Unit) {
     val theme = LocalTheme.current
     Box(
         modifier = Modifier
@@ -117,20 +117,33 @@ private fun BackChevron(onBack: () -> Unit) {
             .tappable(onClick = onBack),
         contentAlignment = Alignment.Center,
     ) {
-        Canvas(Modifier.size(20.dp)) {
+        // An arrow, not iOS's bare chevron. Drawn rather than pulled from
+        // material-icons so it takes the app's own accent and costs no
+        // dependency.
+        Canvas(Modifier.size(22.dp)) {
             val stroke = 2.2.dp.toPx()
             val midY = size.height / 2f
+            val tail = size.width * 0.88f
+            val head = size.width * 0.16f
+            val barb = size.height * 0.26f
             drawLine(
                 color = theme.accent,
-                start = Offset(size.width * 0.62f, midY - size.height * 0.28f),
-                end = Offset(size.width * 0.30f, midY),
+                start = Offset(tail, midY),
+                end = Offset(head, midY),
                 strokeWidth = stroke,
                 cap = StrokeCap.Round,
             )
             drawLine(
                 color = theme.accent,
-                start = Offset(size.width * 0.30f, midY),
-                end = Offset(size.width * 0.62f, midY + size.height * 0.28f),
+                start = Offset(head, midY),
+                end = Offset(head + barb, midY - barb),
+                strokeWidth = stroke,
+                cap = StrokeCap.Round,
+            )
+            drawLine(
+                color = theme.accent,
+                start = Offset(head, midY),
+                end = Offset(head + barb, midY + barb),
                 strokeWidth = stroke,
                 cap = StrokeCap.Round,
             )

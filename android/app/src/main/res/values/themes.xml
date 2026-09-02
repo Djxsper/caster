@@ -1,3 +1,14 @@
 <resources>
+    <!--
+      The launch theme. Android 12+ always shows a splash; without this it is the
+      system default with the bare launcher icon on a grey ground. Naming the
+      window background and the icon makes it the app's own.
+    -->
+    <style name="Theme.Caster.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.Caster</item>
+    </style>
+
     <style name="Theme.Caster" parent="android:Theme.Material.Light.NoActionBar" />
 </resources>

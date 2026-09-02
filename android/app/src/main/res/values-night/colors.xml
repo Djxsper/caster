@@ -1,0 +1,4 @@
+<resources>
+    <!-- DarkTheme.background from Theme.kt: Color(0.027f, 0.027f, 0.030f). -->
+    <color name="splash_background">#FF070708</color>
+</resources>

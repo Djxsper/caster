@@ -1,6 +1,8 @@
 package com.jesperhaafkes.caster.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -98,3 +100,37 @@ val LocalTheme = staticCompositionLocalOf { LightTheme }
 @Composable
 @ReadOnlyComposable
 fun themeForScheme(): Theme = if (isSystemInDarkTheme()) DarkTheme else LightTheme
+
+/**
+ * The app paints its own chrome, but Material still draws things the app does
+ * not: ripples, text-selection handles, the cursor. With no [MaterialTheme] in
+ * the tree those fall back to Material's baseline purple, which has nothing to
+ * do with this app. Deriving a scheme from the palette keeps them in step.
+ */
+fun Theme.materialScheme(isDark: Boolean) = if (isDark) {
+    darkColorScheme(
+        primary = accent,
+        onPrimary = Color.White,
+        background = background,
+        onBackground = textPrimary,
+        surface = surface,
+        onSurface = textPrimary,
+        surfaceVariant = surfaceRaised,
+        onSurfaceVariant = textSecondary,
+        outline = border,
+        error = danger,
+    )
+} else {
+    lightColorScheme(
+        primary = accent,
+        onPrimary = Color.White,
+        background = background,
+        onBackground = textPrimary,
+        surface = surface,
+        onSurface = textPrimary,
+        surfaceVariant = surfaceRaised,
+        onSurfaceVariant = textSecondary,
+        outline = border,
+        error = danger,
+    )
+}

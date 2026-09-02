@@ -17,7 +17,7 @@
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
             android:screenOrientation="portrait"
             android:windowSoftInputMode="adjustResize"
-            android:theme="@style/Theme.Caster">
+            android:theme="@style/Theme.Caster.Splash">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
