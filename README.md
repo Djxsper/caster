@@ -14,6 +14,7 @@ no accounts and no network.
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-iOS%2017%2B-lightgrey.svg)](#install-on-iphone-or-ipad)
 [![Android](https://img.shields.io/badge/Android-8.0%2B-lightgrey.svg)](#android)
+[![Latest IPA](https://img.shields.io/badge/download-latest%20.ipa-blue.svg)](https://github.com/Djxsper/caster/releases/latest/download/Caster.ipa)
 
 <img src="docs/screenshots/mode-select.png" width="200" alt="Game mode list">
 <img src="docs/screenshots/pinwheel.png" width="200" alt="Pinwheel">
@@ -60,8 +61,11 @@ free Apple ID at install time. [AltStore](https://altstore.io) and
 1. Install **AltStore** (needs a PC or Mac running AltServer once) or **SideStore**
    (on-device, no computer after setup). Follow their own setup guide first —
    it is the fiddly part, and it is a one-time thing.
-2. On your iPhone, open [**Releases**](https://github.com/Djxsper/caster/releases)
-   and download `Caster-<version>.ipa`.
+2. On your iPhone, tap
+   [**Download the latest IPA**](https://github.com/Djxsper/caster/releases/latest/download/Caster.ipa).
+   That link always points at the newest build. Older versions, and the release
+   notes for each, are on the
+   [Releases page](https://github.com/Djxsper/caster/releases).
 3. Open the downloaded file and **Share → AltStore** (or SideStore). It will ask
    for your Apple ID so it can sign the app with it.
 4. Wait for it to finish, then launch Caster from your home screen.

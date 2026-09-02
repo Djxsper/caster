@@ -10,6 +10,10 @@ xcuserdata/
 *.dSYM.zip
 *.dSYM
 
+# Locally built IPAs land here (this is the old dist/). Published builds
+# live on GitHub Releases, not in the tree.
+/releases/
+
 # macOS
 .DS_Store
 

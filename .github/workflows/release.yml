@@ -84,7 +84,12 @@ jobs:
           mkdir -p Payload
           cp -R "$APP" Payload/
           zip -qry "Caster-${{ steps.meta.outputs.tag }}.ipa" Payload
-          ls -lh "Caster-${{ steps.meta.outputs.tag }}.ipa"
+          # A second copy under a fixed name. The versioned asset is what
+          # people cite; this one is what
+          # https://github.com/Djxsper/caster/releases/latest/download/Caster.ipa
+          # resolves to, and that URL only works if the name never changes.
+          cp "Caster-${{ steps.meta.outputs.tag }}.ipa" Caster.ipa
+          ls -lh "Caster-${{ steps.meta.outputs.tag }}.ipa" Caster.ipa
 
       - name: Publish the release
         env:
@@ -115,6 +120,7 @@ jobs:
 
           gh release create "$TAG" \
             "Caster-$TAG.ipa" \
+            Caster.ipa \
             --title "Caster $TAG" \
             --notes-file release-notes.md \
             --target "${{ github.sha }}"
