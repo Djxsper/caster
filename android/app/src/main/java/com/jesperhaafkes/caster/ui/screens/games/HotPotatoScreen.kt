@@ -35,6 +35,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.jesperhaafkes.caster.ui.components.AutoShrinkText
 import com.jesperhaafkes.caster.ui.theme.CasterFontFamily
 import com.jesperhaafkes.caster.LocalAppEnvironment
 import com.jesperhaafkes.caster.LocalGameState
@@ -340,11 +341,13 @@ private fun Potato(color: Color, headline: String, isExploded: Boolean, pulse: B
                 text = if (isExploded) "💥" else "🔥",
                 style = TextStyle(fontFamily = CasterFontFamily, fontSize = 38.sp),
             )
-            androidx.compose.material3.Text(
+            AutoShrinkText(
                 text = headline,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp),
+                minScale = 0.5f,
+                maxLines = 2,
                 style = TextStyle(
                     fontFamily = CasterFontFamily,
                     fontSize = 26.sp,
@@ -352,8 +355,6 @@ private fun Potato(color: Color, headline: String, isExploded: Boolean, pulse: B
                     color = theme.textPrimary,
                     textAlign = TextAlign.Center,
                 ),
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
             )
         }
     }

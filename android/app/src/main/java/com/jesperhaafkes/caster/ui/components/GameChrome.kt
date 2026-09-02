@@ -2,6 +2,7 @@ package com.jesperhaafkes.caster.ui.components
 
 import android.os.SystemClock
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -21,9 +22,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -38,6 +42,7 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.changedToDownIgnoreConsumed
 import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
@@ -59,6 +64,35 @@ import com.jesperhaafkes.caster.ui.theme.LocalTheme
 import kotlin.math.roundToInt
 
 /** The filled pill every screen uses for its main action. */
+/**
+ * Text that shrinks to fit instead of ellipsising.
+ *
+ * Swift reaches for `.minimumScaleFactor` in five places, and every one of them
+ * is somewhere a real name ends up. The port turned them all into
+ * `overflow = Ellipsis`, so the holder's name in Hot Potato - the single largest
+ * element in that game - came out as "Bartholom...". [minScale] is the same
+ * fraction Swift passes.
+ */
+@Composable
+fun AutoShrinkText(
+    text: String,
+    style: TextStyle,
+    minScale: Float,
+    modifier: Modifier = Modifier,
+    maxLines: Int = 1,
+) {
+    BasicText(
+        text = text,
+        modifier = modifier,
+        style = style,
+        maxLines = maxLines,
+        autoSize = TextAutoSize.StepBased(
+            minFontSize = style.fontSize * minScale,
+            maxFontSize = style.fontSize,
+        ),
+    )
+}
+
 @Composable
 fun PrimaryButton(
     title: String,
@@ -269,11 +303,29 @@ fun PositionedFingerRing(
     badge: String? = null,
 ) {
     val halfPx = with(LocalDensity.current) { (diameter + 34.dp).toPx() / 2f }
+
+    // A finger landing should pop, not blink into existence - Swift gives every
+    // ring .transition(.scale.combined(with: .opacity)) at
+    // FingerPickerView.swift:107. Only the entrance is reproduced here: an exit
+    // needs the ring to outlive the finger in composition, and the games render
+    // straight from the live arena. In Finger Picker that matches the rule
+    // anyway, where lifting is meant to take the colour away at once.
+    val entrance = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        entrance.animateTo(1f, spring(dampingRatio = 0.6f, stiffness = 900f))
+    }
+
     FingerRing(
         color = color,
-        modifier = Modifier.offset {
-            IntOffset((location.x - halfPx).roundToInt(), (location.y - halfPx).roundToInt())
-        },
+        modifier = Modifier
+            .offset {
+                IntOffset((location.x - halfPx).roundToInt(), (location.y - halfPx).roundToInt())
+            }
+            .graphicsLayer {
+                scaleX = 0.6f + 0.4f * entrance.value
+                scaleY = 0.6f + 0.4f * entrance.value
+                alpha = entrance.value.coerceIn(0f, 1f)
+            },
         diameter = diameter,
         progress = progress,
         spin = spin,
@@ -419,9 +471,30 @@ fun ResultBanner(
     tint: Color? = null,
 ) {
     val theme = LocalTheme.current
+
+    // The reveal is the payoff of every one of these games, and in the port it
+    // was a hard cut - Swift springs it in at, among others,
+    // PinwheelView.swift:195 and TapFrenzyView.swift:450. Animating on first
+    // composition rather than at the call sites means every banner gets it.
+    val entrance = remember { Animatable(0f) }
+    LaunchedEffect(headline) {
+        entrance.snapTo(0f)
+        entrance.animateTo(
+            targetValue = 1f,
+            animationSpec = spring(dampingRatio = 0.8f, stiffness = 320f),
+        )
+    }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .graphicsLayer {
+                // The spring overshoots past 1, which is the point: it is what
+                // makes the banner land rather than simply appear.
+                scaleX = 0.85f + 0.15f * entrance.value
+                scaleY = 0.85f + 0.15f * entrance.value
+                alpha = entrance.value.coerceIn(0f, 1f)
+            }
             .clip(RoundedCornerShape(16.dp))
             .background(theme.surfaceRaised)
             .border(1.dp, (tint ?: theme.border).copy(alpha = 0.5f), RoundedCornerShape(16.dp))

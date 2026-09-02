@@ -2,6 +2,9 @@ package com.jesperhaafkes.caster.ui.screens.games
 
 import android.os.Build
 import android.os.SystemClock
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -438,6 +441,14 @@ private fun CentreLight(
     isCued: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    // The one moment this whole game is about. Swift eases the flip at
+    // UppercutView.swift:103 (.easeOut, 0.08s); without it the disc changes
+    // colour between two frames and the cue reads as a glitch.
+    val lit by animateColorAsState(
+        targetValue = color,
+        animationSpec = tween(durationMillis = 80, easing = FastOutSlowInEasing),
+        label = "centre-light",
+    )
     Box(modifier.size(190.dp), contentAlignment = Alignment.Center) {
         // Modifier.blur needs RenderEffect, so it is a silent no-op below
         // Android 12 — and minSdk here is 26. Left as-is, every phone on
@@ -455,7 +466,7 @@ private fun CentreLight(
             val haloAlpha = if (isCued) 0.85f else 0.22f
             if (canBlur) {
                 drawCircle(
-                    color = color.copy(alpha = haloAlpha),
+                    color = lit.copy(alpha = haloAlpha),
                     radius = radius,
                     center = centre,
                 )
@@ -464,8 +475,8 @@ private fun CentreLight(
                     brush = Brush.radialGradient(
                         // Solid out to the edge of the inner disc, then faded —
                         // roughly what an 18dp blur of a hard circle looks like.
-                        0.0f to color.copy(alpha = haloAlpha),
-                        0.62f to color.copy(alpha = haloAlpha),
+                        0.0f to lit.copy(alpha = haloAlpha),
+                        0.62f to lit.copy(alpha = haloAlpha),
                         1.0f to Color.Transparent,
                         center = centre,
                         radius = radius,
@@ -477,7 +488,7 @@ private fun CentreLight(
         }
         Canvas(Modifier.size(150.dp)) {
             val centre = Offset(size.width / 2f, size.height / 2f)
-            drawCircle(color, radius = size.minDimension / 2f, center = centre)
+            drawCircle(lit, radius = size.minDimension / 2f, center = centre)
             drawCircle(
                 color = Color.White.copy(alpha = 0.35f),
                 radius = size.minDimension / 2f - 1.5.dp.toPx(),
