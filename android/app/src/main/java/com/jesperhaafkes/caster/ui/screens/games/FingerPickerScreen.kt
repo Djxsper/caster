@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import com.jesperhaafkes.caster.LocalAppEnvironment
 import com.jesperhaafkes.caster.domain.DrawEngine
 import com.jesperhaafkes.caster.domain.GameMode
+import com.jesperhaafkes.caster.domain.GameTuning
 import com.jesperhaafkes.caster.touch.ArenaFinger
 import com.jesperhaafkes.caster.touch.TouchArena
 import com.jesperhaafkes.caster.ui.audio.Tone
@@ -87,7 +88,7 @@ fun FingerPickerScreen(onBack: () -> Unit) {
     var countdownJob by remember { mutableStateOf<Job?>(null) }
     val waitProgress = remember { Animatable(0f) }
 
-    val holdDurationMs = 3_000
+    val holdDurationMs = GameTuning.FingerPicker.HOLD_DURATION_MS
 
     val spinTransition = rememberInfiniteTransition(label = "halo-spin")
     val spin by spinTransition.animateFloat(

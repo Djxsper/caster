@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.jesperhaafkes.caster.domain.GameTuning
 import com.jesperhaafkes.caster.ui.theme.CasterFontFamily
 import com.jesperhaafkes.caster.LocalAppEnvironment
 import com.jesperhaafkes.caster.LocalGameState
@@ -100,7 +101,7 @@ fun UppercutScreen(onBack: () -> Unit) {
     var isRosterShown by remember { mutableStateOf(false) }
 
     /** How long everybody has to be settled before the round arms itself. */
-    val settleDurationMs = 1_200L
+    val settleDurationMs = GameTuning.Uppercut.SETTLE_DURATION_MS
 
     /** Nobody gets to wait forever after the cue. */
     val reactionWindowMs = 3_000L

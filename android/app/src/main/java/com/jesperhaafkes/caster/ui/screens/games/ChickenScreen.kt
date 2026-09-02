@@ -33,6 +33,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.jesperhaafkes.caster.domain.GameTuning
 import com.jesperhaafkes.caster.ui.theme.CasterFontFamily
 import com.jesperhaafkes.caster.LocalAppEnvironment
 import com.jesperhaafkes.caster.domain.GameMode
@@ -99,24 +100,24 @@ fun ChickenScreen(onBack: () -> Unit) {
     var settleJob by remember { mutableStateOf<Job?>(null) }
     var roundJob by remember { mutableStateOf<Job?>(null) }
 
-    val settleDurationMs = 1_500L
+    val settleDurationMs = GameTuning.Chicken.SETTLE_DURATION_MS
 
     /**
      * Deliberately below human reaction time. The opening flashes are meant to
      * be unmissable in the bad sense, and the tension comes from watching the
      * window creep up towards something anyone can actually hit.
      */
-    val startWindowMs = 100.0
-    val windowStepMs = 50.0
+    val startWindowMs = GameTuning.Chicken.START_WINDOW_MS
+    val windowStepMs = GameTuning.Chicken.WINDOW_STEP_MS
 
     /** Nothing needs a window this wide; it only stops a stuck round crawling. */
-    val maxWindowMs = 2_500.0
+    val maxWindowMs = GameTuning.Chicken.MAX_WINDOW_MS
 
     /**
      * Slack for the trip from glass to callback, so a lift that really did land
      * inside the window is not thrown out by delivery lag.
      */
-    val latencyGraceMs = 90L
+    val latencyGraceMs = GameTuning.Chicken.LATENCY_GRACE_MS
 
     fun qualifies(slot: Int, windowMs: Double, flashedAt: Long): Boolean {
         if (liftedSlot != slot) return false

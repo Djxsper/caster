@@ -126,6 +126,15 @@ finger, so the slot tracking, reaction timing and haptics are only ever verified
 on a real device — which is what [`TouchArenaTest`](android/app/src/test/java/com/jesperhaafkes/caster/TouchArenaTest.kt)
 exists to compensate for.
 
+Two codebases drift, and the drift is silent: a window widened on one platform
+and not the other makes the same game play differently on the two phones, and
+nothing fails. The numbers that decide how a round feels therefore live in
+[`shared/parity/golden.json`](shared/parity/golden.json), which neither app owns
+and both test suites are meant to read. Android reads it today; the iOS project
+has no test target yet. See [the parity notes](shared/parity/README.md).
+
+Shipping it is written up in [`android/RELEASING.md`](android/RELEASING.md).
+
 ---
 
 ## Building and hacking on it

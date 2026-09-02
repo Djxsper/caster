@@ -33,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.jesperhaafkes.caster.domain.GameTuning
 import com.jesperhaafkes.caster.ui.theme.CasterFontFamily
 import com.jesperhaafkes.caster.LocalAppEnvironment
 import com.jesperhaafkes.caster.domain.DrawEngine
@@ -101,7 +102,7 @@ fun TapFrenzyScreen(onBack: () -> Unit) {
     var settleJob by remember { mutableStateOf<Job?>(null) }
     var roundJob by remember { mutableStateOf<Job?>(null) }
 
-    val settleDurationMs = 1_500L
+    val settleDurationMs = GameTuning.TapFrenzy.SETTLE_DURATION_MS
     val tapWindowSeconds = 5.0f
 
     /**

@@ -85,4 +85,8 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     testImplementation(libs.junit)
+    // The android.jar stub throws for every org.json call in a unit test;
+    // this puts a real implementation on the test classpath so ParityTest can
+    // read the shared fixture.
+    testImplementation(libs.org.json)
 }

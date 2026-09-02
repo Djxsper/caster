@@ -1,0 +1,72 @@
+{
+  "_comment": [
+    "The behavioural contract between the two Caster apps.",
+    "",
+    "Caster is written twice - SwiftUI on iOS, Compose on Android - because no",
+    "tool shares a UIKit multi-touch layer, Core Haptics and AVAudioEngine with",
+    "Android. That is a deliberate choice, but it means these two codebases can",
+    "drift silently: a tuning constant changed on one side and not the other",
+    "makes the same game feel different on the two phones, and nothing fails.",
+    "",
+    "This file is the fixture both test suites read. Change a value here and both",
+    "sides go red until they agree. Do not edit it to make a test pass - edit it",
+    "when the behaviour is meant to change, then change both apps.",
+    "",
+    "Android reads it in ParityTest.kt. The iOS side has no test target yet."
+  ],
+
+  "seatColors": {
+    "_comment": "Theme.swift:33-42 and Theme.kt:66-75. Order is the seat order.",
+    "values": [
+      { "name": "blue",   "r": 0.235, "g": 0.506, "b": 0.882 },
+      { "name": "green",  "r": 0.063, "g": 0.690, "b": 0.498 },
+      { "name": "amber",  "r": 0.859, "g": 0.780, "b": 0.384 },
+      { "name": "brown",  "r": 0.560, "g": 0.365, "b": 0.250 },
+      { "name": "purple", "r": 0.533, "g": 0.373, "b": 0.831 },
+      { "name": "pink",   "r": 0.961, "g": 0.298, "b": 0.486 },
+      { "name": "cyan",   "r": 0.063, "g": 0.690, "b": 0.859 },
+      { "name": "slate",  "r": 0.392, "g": 0.447, "b": 0.509 }
+    ]
+  },
+
+  "spreadRules": {
+    "_comment": "PlayerPalette.spread, for wheels past the fixed eight.",
+    "saturationEven": 0.62,
+    "saturationOdd": 0.74,
+    "brightnessEveryThird": 0.92,
+    "brightnessOther": 0.80,
+    "hueStridePerIndexMod3": 0.11
+  },
+
+  "timing": {
+    "_comment": "Seconds on iOS, milliseconds on Android. Values here are ms.",
+    "chicken": {
+      "startWindowMs": 100,
+      "windowStepMs": 50,
+      "maxWindowMs": 2500,
+      "latencyGraceMs": 90,
+      "settleDurationMs": 1500
+    },
+    "fingerPicker": { "holdDurationMs": 3000 },
+    "uppercut": { "settleDurationMs": 1200 },
+    "tapFrenzy": { "settleDurationMs": 1500 }
+  },
+
+  "draw": {
+    "_comment": "Invariants of DrawEngine, not a fixed sequence - the draw is random by design.",
+    "zeroWeightNeverDrawn": true,
+    "allZeroFallsBackToUniform": true,
+    "teamsBalancedWithin": 1,
+    "orderIsPermutation": true,
+    "weighted90_10": { "trials": 4000, "expectMin": 0.85, "expectMax": 0.95 },
+    "tapFrenzyMaxAdvantageRatio": 5.0
+  },
+
+  "roster": {
+    "_comment": "PlayerLimits, and the blank-name rule.",
+    "minimum": 2,
+    "maximum": 12,
+    "blankNamesDropped": true,
+    "syntheticNameFormat": "Player {n}"
+  }
+}
