@@ -17,6 +17,8 @@ import com.jesperhaafkes.caster.domain.GameState
 import com.jesperhaafkes.caster.domain.RosterStore
 import com.jesperhaafkes.caster.domain.WheelStore
 import com.jesperhaafkes.caster.ui.screens.LaunchScreen
+import androidx.compose.material3.LocalTextStyle
+import com.jesperhaafkes.caster.ui.theme.CasterFontFamily
 import com.jesperhaafkes.caster.ui.theme.LocalTheme
 import com.jesperhaafkes.caster.ui.theme.themeForScheme
 
@@ -75,6 +77,10 @@ fun CasterApp() {
 
     CompositionLocalProvider(
         LocalTheme provides themeForScheme(),
+        // material3's Text merges its `style` argument over LocalTextStyle, and
+        // nothing in the app names a font family, so providing it once here is
+        // what puts the rounded face on every label.
+        LocalTextStyle provides LocalTextStyle.current.copy(fontFamily = CasterFontFamily),
         LocalAppEnvironment provides environment,
         LocalGameState provides gameState,
         LocalWheelStore provides wheelStore,

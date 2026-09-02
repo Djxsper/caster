@@ -9,6 +9,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.systemGestureExclusion
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,6 +53,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.jesperhaafkes.caster.ui.theme.CasterFontFamily
 import com.jesperhaafkes.caster.touch.TouchArena
 import com.jesperhaafkes.caster.ui.theme.LocalTheme
 import kotlin.math.roundToInt
@@ -77,6 +81,7 @@ fun PrimaryButton(
         Text(
             text = title,
             style = TextStyle(
+                fontFamily = CasterFontFamily,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
@@ -107,6 +112,7 @@ fun SecondaryButton(
         Text(
             text = title,
             style = TextStyle(
+                fontFamily = CasterFontFamily,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = theme.textPrimary,
@@ -135,6 +141,7 @@ fun StatusLine(
             .fillMaxWidth()
             .padding(horizontal = 24.dp),
         style = TextStyle(
+            fontFamily = CasterFontFamily,
             fontSize = 15.sp,
             fontWeight = FontWeight.Medium,
             color = color,
@@ -216,6 +223,7 @@ fun FingerRing(
                 text = badge,
                 modifier = Modifier.widthIn(max = diameter * 0.9f),
                 style = TextStyle(
+                    fontFamily = CasterFontFamily,
                     fontSize = (diameter.value * 0.42f).sp,
                     fontWeight = FontWeight.Black,
                     color = color,
@@ -314,6 +322,11 @@ fun TouchSurface(
     Box(
         modifier = modifier
             .fillMaxSize()
+            // A thumb parked near an edge is a player, not a back gesture. UIKit
+            // gets this by switching off interactivePopGestureRecognizer while
+            // the surface is up (MultiTouchView.swift:11-14); this is the same
+            // intent, and Android honours it on 29+.
+            .systemGestureExclusion()
             .pointerInput(arena) {
                 try {
                     awaitPointerEventScope {
@@ -374,10 +387,11 @@ fun EmptyPlayHint(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Text(text = glyph, style = TextStyle(fontSize = 46.sp))
+        Text(text = glyph, style = TextStyle(fontFamily = CasterFontFamily, fontSize = 46.sp))
         Text(
             text = title,
             style = TextStyle(
+                fontFamily = CasterFontFamily,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 color = theme.textPrimary,
@@ -387,6 +401,7 @@ fun EmptyPlayHint(
             text = detail,
             modifier = Modifier.widthIn(max = 280.dp),
             style = TextStyle(
+                fontFamily = CasterFontFamily,
                 fontSize = 13.sp,
                 color = theme.textSecondary,
                 textAlign = TextAlign.Center,
@@ -417,6 +432,7 @@ fun ResultBanner(
         Text(
             text = headline,
             style = TextStyle(
+                fontFamily = CasterFontFamily,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Black,
                 color = tint ?: theme.textPrimary,
@@ -428,6 +444,7 @@ fun ResultBanner(
             Text(
                 text = detail,
                 style = TextStyle(
+                    fontFamily = CasterFontFamily,
                     fontSize = 13.sp,
                     color = theme.textSecondary,
                     textAlign = TextAlign.Center,
@@ -443,3 +460,24 @@ fun ResultBanner(
  */
 fun Modifier.tappable(enabled: Boolean = true, onClick: () -> Unit): Modifier =
     this.clickable(enabled = enabled, onClick = onClick)
+
+/**
+ * A tap with no ripple, no click sound and no button semantics.
+ *
+ * For the surfaces that *are* the whole screen — passing the potato is a tap
+ * anywhere — Material's press feedback fires across the entire display on every
+ * pass, which reads as a rendering glitch rather than a button. Swift uses a
+ * bare `.contentShape(Rectangle()).onTapGesture` here for the same reason.
+ * Ordinary buttons keep [tappable] and keep their ripple, because on Android
+ * that is the right answer for a button.
+ */
+@Composable
+fun Modifier.silentTap(enabled: Boolean = true, onClick: () -> Unit): Modifier {
+    val interactionSource = remember { MutableInteractionSource() }
+    return this.clickable(
+        interactionSource = interactionSource,
+        indication = null,
+        enabled = enabled,
+        onClick = onClick,
+    )
+}

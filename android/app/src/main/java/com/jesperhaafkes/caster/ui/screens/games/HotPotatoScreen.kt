@@ -35,6 +35,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.jesperhaafkes.caster.ui.theme.CasterFontFamily
 import com.jesperhaafkes.caster.LocalAppEnvironment
 import com.jesperhaafkes.caster.LocalGameState
 import com.jesperhaafkes.caster.LocalRosterStore
@@ -46,7 +47,7 @@ import com.jesperhaafkes.caster.ui.components.PrimaryButton
 import com.jesperhaafkes.caster.ui.components.SecondaryButton
 import com.jesperhaafkes.caster.ui.components.StatusLine
 import com.jesperhaafkes.caster.ui.components.ToggleRow
-import com.jesperhaafkes.caster.ui.components.tappable
+import com.jesperhaafkes.caster.ui.components.silentTap
 import com.jesperhaafkes.caster.ui.haptics.FeedbackType
 import com.jesperhaafkes.caster.ui.screens.RosterBarAction
 import com.jesperhaafkes.caster.ui.screens.RosterDialog
@@ -233,7 +234,7 @@ fun HotPotatoScreen(onBack: () -> Unit) {
                         theme.background
                     }
                 )
-                .tappable(enabled = phase == PotatoPhase.RUNNING) { pass() }
+                .silentTap(enabled = phase == PotatoPhase.RUNNING) { pass() }
         ) {
             Column(
                 modifier = Modifier
@@ -337,7 +338,7 @@ private fun Potato(color: Color, headline: String, isExploded: Boolean, pulse: B
         ) {
             androidx.compose.material3.Text(
                 text = if (isExploded) "💥" else "🔥",
-                style = TextStyle(fontSize = 38.sp),
+                style = TextStyle(fontFamily = CasterFontFamily, fontSize = 38.sp),
             )
             androidx.compose.material3.Text(
                 text = headline,
@@ -345,6 +346,7 @@ private fun Potato(color: Color, headline: String, isExploded: Boolean, pulse: B
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp),
                 style = TextStyle(
+                    fontFamily = CasterFontFamily,
                     fontSize = 26.sp,
                     fontWeight = FontWeight.Black,
                     color = theme.textPrimary,

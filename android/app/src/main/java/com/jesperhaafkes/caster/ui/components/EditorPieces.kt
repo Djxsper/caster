@@ -46,6 +46,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.jesperhaafkes.caster.ui.theme.CasterFontFamily
 import com.jesperhaafkes.caster.ui.theme.LocalTheme
 
 /**
@@ -87,7 +88,7 @@ fun PickerHeader(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Text(text = glyph, style = TextStyle(fontSize = 17.sp))
+            Text(text = glyph, style = TextStyle(fontFamily = CasterFontFamily, fontSize = 17.sp))
 
             Column(
                 modifier = Modifier.weight(1f),
@@ -96,6 +97,7 @@ fun PickerHeader(
                 Text(
                     text = title,
                     style = TextStyle(
+                        fontFamily = CasterFontFamily,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = theme.textPrimary,
@@ -105,7 +107,7 @@ fun PickerHeader(
                 )
                 Text(
                     text = subtitle,
-                    style = TextStyle(fontSize = 12.sp, color = theme.textSecondary),
+                    style = TextStyle(fontFamily = CasterFontFamily, fontSize = 12.sp, color = theme.textSecondary),
                 )
             }
 
@@ -169,6 +171,7 @@ fun EditorMenuItem(
             Text(
                 text = label,
                 style = TextStyle(
+                    fontFamily = CasterFontFamily,
                     fontSize = 15.sp,
                     color = if (isDestructive) theme.danger else theme.textPrimary,
                 ),
@@ -215,7 +218,7 @@ fun AddRow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(focusRequester),
-                textStyle = TextStyle(fontSize = 16.sp, color = theme.textPrimary),
+                textStyle = TextStyle(fontFamily = CasterFontFamily, fontSize = 16.sp, color = theme.textPrimary),
                 cursorBrush = SolidColor(theme.accent),
                 keyboardOptions = NameKeyboard,
                 keyboardActions = KeyboardActions(onDone = { onCommit() }),
@@ -223,7 +226,7 @@ fun AddRow(
                     if (value.isEmpty()) {
                         Text(
                             text = placeholder,
-                            style = TextStyle(fontSize = 16.sp, color = theme.textSecondary),
+                            style = TextStyle(fontFamily = CasterFontFamily, fontSize = 16.sp, color = theme.textSecondary),
                         )
                     }
                     inner()
@@ -313,7 +316,7 @@ fun EditorRow(
             onValueChange = onValueChange,
             singleLine = true,
             modifier = Modifier.weight(1f),
-            textStyle = TextStyle(fontSize = 16.sp, color = theme.textPrimary),
+            textStyle = TextStyle(fontFamily = CasterFontFamily, fontSize = 16.sp, color = theme.textPrimary),
             cursorBrush = SolidColor(theme.accent),
             keyboardOptions = NameKeyboard,
             keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
@@ -398,10 +401,10 @@ fun EditorEmptyState(glyph: String, message: String, modifier: Modifier = Modifi
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(text = glyph, style = TextStyle(fontSize = 40.sp))
+        Text(text = glyph, style = TextStyle(fontFamily = CasterFontFamily, fontSize = 40.sp))
         Text(
             text = message,
-            style = TextStyle(fontSize = 15.sp, color = theme.textSecondary),
+            style = TextStyle(fontFamily = CasterFontFamily, fontSize = 15.sp, color = theme.textSecondary),
         )
     }
 }
@@ -426,6 +429,7 @@ fun NamePromptDialog(
             Text(
                 text = title,
                 style = TextStyle(
+                    fontFamily = CasterFontFamily,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = theme.textPrimary,
@@ -437,7 +441,7 @@ fun NamePromptDialog(
                 if (message != null) {
                     Text(
                         text = message,
-                        style = TextStyle(fontSize = 13.sp, color = theme.textSecondary),
+                        style = TextStyle(fontFamily = CasterFontFamily, fontSize = 13.sp, color = theme.textSecondary),
                     )
                 }
                 FieldBox {
@@ -446,7 +450,7 @@ fun NamePromptDialog(
                         onValueChange = { draft = it },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
-                        textStyle = TextStyle(fontSize = 16.sp, color = theme.textPrimary),
+                        textStyle = TextStyle(fontFamily = CasterFontFamily, fontSize = 16.sp, color = theme.textPrimary),
                         cursorBrush = SolidColor(theme.accent),
                         keyboardOptions = NameKeyboard,
                         keyboardActions = KeyboardActions(onDone = { onSave(draft) }),
@@ -455,6 +459,7 @@ fun NamePromptDialog(
                                 Text(
                                     text = placeholder,
                                     style = TextStyle(
+                                        fontFamily = CasterFontFamily,
                                         fontSize = 16.sp,
                                         color = theme.textSecondary,
                                     ),
@@ -468,12 +473,12 @@ fun NamePromptDialog(
         },
         confirmButton = {
             TextButton(onClick = { onSave(draft) }) {
-                Text("Save", style = TextStyle(color = theme.accent, fontSize = 15.sp))
+                Text("Save", style = TextStyle(fontFamily = CasterFontFamily, color = theme.accent, fontSize = 15.sp))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel", style = TextStyle(color = theme.textSecondary, fontSize = 15.sp))
+                Text("Cancel", style = TextStyle(fontFamily = CasterFontFamily, color = theme.textSecondary, fontSize = 15.sp))
             }
         },
     )
@@ -495,6 +500,7 @@ fun ConfirmDeleteDialog(
             Text(
                 text = title,
                 style = TextStyle(
+                    fontFamily = CasterFontFamily,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = theme.textPrimary,
@@ -502,16 +508,16 @@ fun ConfirmDeleteDialog(
             )
         },
         text = {
-            Text(text = message, style = TextStyle(fontSize = 13.sp, color = theme.textSecondary))
+            Text(text = message, style = TextStyle(fontFamily = CasterFontFamily, fontSize = 13.sp, color = theme.textSecondary))
         },
         confirmButton = {
             TextButton(onClick = onConfirm) {
-                Text("Delete", style = TextStyle(color = theme.danger, fontSize = 15.sp))
+                Text("Delete", style = TextStyle(fontFamily = CasterFontFamily, color = theme.danger, fontSize = 15.sp))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel", style = TextStyle(color = theme.textSecondary, fontSize = 15.sp))
+                Text("Cancel", style = TextStyle(fontFamily = CasterFontFamily, color = theme.textSecondary, fontSize = 15.sp))
             }
         },
     )
@@ -563,6 +569,7 @@ fun BarTextAction(label: String, onClick: () -> Unit) {
         Text(
             text = label,
             style = TextStyle(
+                fontFamily = CasterFontFamily,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = theme.accent,

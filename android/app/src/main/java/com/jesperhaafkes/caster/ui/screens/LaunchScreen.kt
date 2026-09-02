@@ -30,6 +30,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.jesperhaafkes.caster.ui.theme.CasterFontFamily
 import com.jesperhaafkes.caster.LocalAppEnvironment
 import com.jesperhaafkes.caster.domain.GameMode
 import com.jesperhaafkes.caster.domain.Route
@@ -135,6 +136,7 @@ private fun LaunchContent(onBegin: () -> Unit) {
                 Text(
                     text = "Caster",
                     style = TextStyle(
+                        fontFamily = CasterFontFamily,
                         fontSize = 34.sp,
                         fontWeight = FontWeight.Bold,
                         color = theme.textPrimary,
@@ -142,7 +144,7 @@ private fun LaunchContent(onBegin: () -> Unit) {
                 )
                 Text(
                     text = "Ready to play",
-                    style = TextStyle(fontSize = 20.sp, color = theme.textSecondary),
+                    style = TextStyle(fontFamily = CasterFontFamily, fontSize = 20.sp, color = theme.textSecondary),
                 )
             }
 

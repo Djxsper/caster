@@ -38,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.jesperhaafkes.caster.ui.theme.CasterFontFamily
 import com.jesperhaafkes.caster.LocalAppEnvironment
 import com.jesperhaafkes.caster.LocalWheelStore
 import com.jesperhaafkes.caster.domain.GameMode
@@ -272,7 +273,7 @@ private fun Hub(isSpinning: Boolean) {
         }
         androidx.compose.material3.Text(
             text = if (isSpinning) "🎡" else "👋",
-            style = TextStyle(fontSize = 20.sp),
+            style = TextStyle(fontFamily = CasterFontFamily, fontSize = 20.sp),
         )
     }
 }
@@ -352,6 +353,7 @@ private fun DrawScope.drawSliceLabel(
     val layout = textMeasurer.measure(
         text = AnnotatedString(text),
         style = TextStyle(
+            fontFamily = CasterFontFamily,
             fontSize = (fontSizePx / density).sp,
             fontWeight = FontWeight.SemiBold,
             color = ink,

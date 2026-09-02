@@ -27,6 +27,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.jesperhaafkes.caster.ui.theme.CasterFontFamily
 import com.jesperhaafkes.caster.LocalAppEnvironment
 import com.jesperhaafkes.caster.LocalGameState
 import com.jesperhaafkes.caster.domain.GameMode
@@ -61,6 +62,7 @@ fun ModeSelectScreen(onBack: () -> Unit, onAdvance: (Route) -> Unit) {
                     .fillMaxWidth()
                     .padding(top = 16.dp, bottom = 12.dp),
                 style = TextStyle(
+                    fontFamily = CasterFontFamily,
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
                     color = theme.textPrimary,
@@ -130,7 +132,7 @@ private fun ModeCard(mode: GameMode, isSelected: Boolean, onSelect: () -> Unit) 
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Box(Modifier.width(32.dp), contentAlignment = Alignment.Center) {
-            Text(text = mode.icon, style = TextStyle(fontSize = 22.sp))
+            Text(text = mode.icon, style = TextStyle(fontFamily = CasterFontFamily, fontSize = 22.sp))
         }
 
         Column(
@@ -140,6 +142,7 @@ private fun ModeCard(mode: GameMode, isSelected: Boolean, onSelect: () -> Unit) 
             Text(
                 text = mode.title,
                 style = TextStyle(
+                    fontFamily = CasterFontFamily,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = theme.textPrimary,
@@ -147,7 +150,7 @@ private fun ModeCard(mode: GameMode, isSelected: Boolean, onSelect: () -> Unit) 
             )
             Text(
                 text = mode.summary,
-                style = TextStyle(fontSize = 12.sp, color = theme.textSecondary),
+                style = TextStyle(fontFamily = CasterFontFamily, fontSize = 12.sp, color = theme.textSecondary),
             )
         }
 

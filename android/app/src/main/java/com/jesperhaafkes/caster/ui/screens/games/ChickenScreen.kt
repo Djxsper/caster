@@ -33,6 +33,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.jesperhaafkes.caster.ui.theme.CasterFontFamily
 import com.jesperhaafkes.caster.LocalAppEnvironment
 import com.jesperhaafkes.caster.domain.GameMode
 import com.jesperhaafkes.caster.touch.TouchArena
@@ -426,10 +427,11 @@ private fun WindowChip(windowMs: Double, modifier: Modifier = Modifier) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        androidx.compose.material3.Text(text = "⏱", style = TextStyle(fontSize = 12.sp))
+        androidx.compose.material3.Text(text = "⏱", style = TextStyle(fontFamily = CasterFontFamily, fontSize = 12.sp))
         androidx.compose.material3.Text(
             text = "${windowMs.roundToInt()} ms to let go",
             style = TextStyle(
+                fontFamily = CasterFontFamily,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = theme.textSecondary,
@@ -453,6 +455,7 @@ private fun SafeStrip(slots: List<Int>, modifier: Modifier = Modifier) {
         androidx.compose.material3.Text(
             text = "Out safe",
             style = TextStyle(
+                fontFamily = CasterFontFamily,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = theme.textSecondary,
@@ -469,6 +472,7 @@ private fun SafeStrip(slots: List<Int>, modifier: Modifier = Modifier) {
                 androidx.compose.material3.Text(
                     text = "${slot + 1}",
                     style = TextStyle(
+                        fontFamily = CasterFontFamily,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,

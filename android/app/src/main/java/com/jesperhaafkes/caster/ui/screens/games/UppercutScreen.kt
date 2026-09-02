@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.jesperhaafkes.caster.ui.theme.CasterFontFamily
 import com.jesperhaafkes.caster.LocalAppEnvironment
 import com.jesperhaafkes.caster.LocalGameState
 import com.jesperhaafkes.caster.LocalRosterStore
@@ -373,6 +374,7 @@ fun UppercutScreen(onBack: () -> Unit) {
                                 text = "${entry.rank}",
                                 modifier = Modifier.width(18.dp),
                                 style = TextStyle(
+                                    fontFamily = CasterFontFamily,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = theme.textSecondary,
@@ -387,13 +389,14 @@ fun UppercutScreen(onBack: () -> Unit) {
                             androidx.compose.material3.Text(
                                 text = gameState.nameForSlot(entry.slot),
                                 modifier = Modifier.weight(1f),
-                                style = TextStyle(fontSize = 14.sp, color = theme.textPrimary),
+                                style = TextStyle(fontFamily = CasterFontFamily, fontSize = 14.sp, color = theme.textPrimary),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
                             androidx.compose.material3.Text(
                                 text = entry.timeMs?.let { "$it ms" } ?: "no lift",
                                 style = TextStyle(
+                                    fontFamily = CasterFontFamily,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = resultTint(entry.slot),
@@ -482,6 +485,6 @@ private fun CentreLight(
                 style = Stroke(3.dp.toPx()),
             )
         }
-        androidx.compose.material3.Text(text = glyph, style = TextStyle(fontSize = 40.sp))
+        androidx.compose.material3.Text(text = glyph, style = TextStyle(fontFamily = CasterFontFamily, fontSize = 40.sp))
     }
 }

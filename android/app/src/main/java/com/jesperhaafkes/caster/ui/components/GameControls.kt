@@ -27,6 +27,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.jesperhaafkes.caster.ui.theme.CasterFontFamily
 import com.jesperhaafkes.caster.ui.theme.LocalTheme
 
 /** The panel a game floats over its play area to hold its pre-round settings. */
@@ -86,6 +87,7 @@ fun <T> SegmentedControl(
                 Text(
                     text = label(option),
                     style = TextStyle(
+                        fontFamily = CasterFontFamily,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = if (isSelected) Color.White else theme.textPrimary,
@@ -114,7 +116,7 @@ fun StepperRow(
         Text(
             text = title,
             modifier = Modifier.weight(1f),
-            style = TextStyle(fontSize = 14.sp, color = theme.textSecondary),
+            style = TextStyle(fontFamily = CasterFontFamily, fontSize = 14.sp, color = theme.textSecondary),
         )
         StepButton(isPlus = false, enabled = value > range.first) { onValueChange(value - 1) }
         StepButton(isPlus = true, enabled = value < range.last) { onValueChange(value + 1) }
@@ -183,6 +185,7 @@ fun ToggleRow(
             Text(
                 text = title,
                 style = TextStyle(
+                    fontFamily = CasterFontFamily,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = theme.textPrimary,
@@ -190,7 +193,7 @@ fun ToggleRow(
             )
             Text(
                 text = caption,
-                style = TextStyle(fontSize = 12.sp, color = theme.textSecondary),
+                style = TextStyle(fontFamily = CasterFontFamily, fontSize = 12.sp, color = theme.textSecondary),
             )
         }
 

@@ -33,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.jesperhaafkes.caster.ui.theme.CasterFontFamily
 import com.jesperhaafkes.caster.LocalAppEnvironment
 import com.jesperhaafkes.caster.domain.DrawEngine
 import com.jesperhaafkes.caster.domain.GameMode
@@ -380,6 +381,7 @@ fun TapFrenzyScreen(onBack: () -> Unit) {
                             text = stake.caption,
                             modifier = Modifier.fillMaxWidth(),
                             style = TextStyle(
+                                fontFamily = CasterFontFamily,
                                 fontSize = 12.sp,
                                 color = theme.textSecondary,
                                 textAlign = TextAlign.Center,
@@ -393,6 +395,7 @@ fun TapFrenzyScreen(onBack: () -> Unit) {
                 FrenzyPhase.COUNTDOWN -> androidx.compose.material3.Text(
                     text = "$countdownValue",
                     style = TextStyle(
+                        fontFamily = CasterFontFamily,
                         fontSize = 84.sp,
                         fontWeight = FontWeight.Black,
                         color = theme.accent,
@@ -402,6 +405,7 @@ fun TapFrenzyScreen(onBack: () -> Unit) {
                 FrenzyPhase.TAPPING -> androidx.compose.material3.Text(
                     text = String.format("%.1f", timeRemaining),
                     style = TextStyle(
+                        fontFamily = CasterFontFamily,
                         fontSize = 64.sp,
                         fontWeight = FontWeight.Black,
                         color = if (timeRemaining < 1.5f) theme.danger else theme.textPrimary,
@@ -428,16 +432,17 @@ fun TapFrenzyScreen(onBack: () -> Unit) {
                             )
                             androidx.compose.material3.Text(
                                 text = "Player ${row.slot + 1}",
-                                style = TextStyle(fontSize = 14.sp, color = theme.textPrimary),
+                                style = TextStyle(fontFamily = CasterFontFamily, fontSize = 14.sp, color = theme.textPrimary),
                             )
                             androidx.compose.material3.Text(
                                 text = "${row.taps} taps",
                                 modifier = Modifier.weight(1f),
-                                style = TextStyle(fontSize = 12.sp, color = theme.textSecondary),
+                                style = TextStyle(fontFamily = CasterFontFamily, fontSize = 12.sp, color = theme.textSecondary),
                             )
                             androidx.compose.material3.Text(
                                 text = "${(row.share * 100).roundToInt()}%",
                                 style = TextStyle(
+                                    fontFamily = CasterFontFamily,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = if (row.slot == pickedSlot) {

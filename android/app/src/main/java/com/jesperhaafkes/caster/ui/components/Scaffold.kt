@@ -30,6 +30,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.jesperhaafkes.caster.ui.theme.CasterFontFamily
 import com.jesperhaafkes.caster.ui.theme.LocalTheme
 
 /**
@@ -72,6 +73,7 @@ fun CasterScreen(
                 text = title,
                 modifier = Modifier.weight(1f),
                 style = TextStyle(
+                    fontFamily = CasterFontFamily,
                     fontSize = 17.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = theme.textPrimary,
@@ -154,7 +156,7 @@ fun BarAction(
     ) {
         Text(
             text = glyph,
-            style = TextStyle(fontSize = 19.sp, color = tint ?: theme.accent),
+            style = TextStyle(fontFamily = CasterFontFamily, fontSize = 19.sp, color = tint ?: theme.accent),
         )
     }
 }
