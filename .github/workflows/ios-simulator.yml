@@ -27,7 +27,7 @@ jobs:
       PROJECT: Caster.xcodeproj
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # The project uses objectVersion 77 (file-system synchronized groups),
       # which needs Xcode 16 or newer to open.
@@ -141,14 +141,14 @@ jobs:
           cp -R "$HOME/Library/Logs/DiagnosticReports/." crashes/ 2>/dev/null || true
           ls -la crashes || true
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: always()
         with:
           name: caster-screenshots
           path: screenshots/
           if-no-files-found: warn
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: always()
         with:
           name: build-log
@@ -186,7 +186,7 @@ jobs:
           zip -qry Caster-unsigned.ipa Payload
           ls -lh Caster-unsigned.ipa
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: always()
         with:
           name: caster-ipa

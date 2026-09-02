@@ -30,16 +30,16 @@ jobs:
         working-directory: android
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v5
 
       - name: Unit tests
         run: ./gradlew test --no-daemon
@@ -54,7 +54,7 @@ jobs:
       # toolchain — which, per the note at the top, is the only way to check the
       # parts that matter.
       - name: Upload the APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: caster-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
@@ -62,7 +62,7 @@ jobs:
 
       - name: Upload the reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: caster-android-reports
           path: |

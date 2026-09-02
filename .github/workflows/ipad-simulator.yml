@@ -33,7 +33,7 @@ jobs:
       PROJECT: Caster.xcodeproj
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # objectVersion 77 (file-system synchronized groups) needs Xcode 16+.
       - name: Select the newest installed Xcode
@@ -137,7 +137,7 @@ jobs:
           echo "--- ${{ steps.sim.outputs.name }} ---"
           sips -g pixelWidth -g pixelHeight screenshots/2-mode-select.png
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: always()
         with:
           name: caster-ipad-screenshots
