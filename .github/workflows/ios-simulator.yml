@@ -141,14 +141,14 @@ jobs:
           cp -R "$HOME/Library/Logs/DiagnosticReports/." crashes/ 2>/dev/null || true
           ls -la crashes || true
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         if: always()
         with:
           name: caster-screenshots
           path: screenshots/
           if-no-files-found: warn
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         if: always()
         with:
           name: build-log
@@ -186,7 +186,7 @@ jobs:
           zip -qry Caster-unsigned.ipa Payload
           ls -lh Caster-unsigned.ipa
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         if: always()
         with:
           name: caster-ipa

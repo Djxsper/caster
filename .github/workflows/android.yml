@@ -54,7 +54,7 @@ jobs:
       # toolchain — which, per the note at the top, is the only way to check the
       # parts that matter.
       - name: Upload the APK
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: caster-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
@@ -62,7 +62,7 @@ jobs:
 
       - name: Upload the reports
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: caster-android-reports
           path: |
