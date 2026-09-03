@@ -21,7 +21,16 @@ name: Build a test IPA
 # experimenting on.
 
 on:
+  # The manual button needs this file to exist on the default branch, and master
+  # is a long way behind the branch the work is actually on — it does not even
+  # have android.yml. Until that catches up, touching this file is the trigger.
+  #
+  # The paths filter is what keeps that from being wasteful: an ordinary commit
+  # does not book a macOS runner, only a deliberate edit to this workflow does.
   workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/test-ipa.yml"
 
 jobs:
   test-ipa:
