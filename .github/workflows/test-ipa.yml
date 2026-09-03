@@ -67,6 +67,13 @@ jobs:
           set -o pipefail
           # Debug, unlike release.yml. That is the entire point of this workflow:
           # everything behind #if DEBUG has to survive into the binary.
+          #
+          # ENABLE_DEBUG_DYLIB=NO is what makes the result sideloadable. Xcode 16
+          # splits a Debug app into a launcher stub plus Caster.debug.dylib for
+          # the previews machinery, and that layout expects to be launched by
+          # Xcode - re-signed by AltStore and started from a home screen it often
+          # will not come up at all. This puts the code back into one ordinary
+          # executable, unchanged in every other respect.
           xcodebuild build \
             -project "$PROJECT" \
             -scheme "$SCHEME" \
@@ -76,6 +83,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
+            ENABLE_DEBUG_DYLIB=NO \
             2>&1 | tail -30
 
           APP=$(find build-device/Build/Products/Debug-iphoneos -maxdepth 1 -name "Caster.app" | head -1)
@@ -103,20 +111,30 @@ jobs:
       - name: Confirm the debug affordances actually made it in
         run: |
           set -u
-          BIN=Payload/Caster.app/Caster
-          if [ ! -f "$BIN" ]; then
-            echo "::error::no executable at $BIN"
-            find Payload -maxdepth 3 || true
+          APP=Payload/Caster.app
+          echo "--- what is actually in the bundle ---"
+          ls -lhS "$APP"
+
+          # One conventional executable is the whole point of
+          # ENABLE_DEBUG_DYLIB=NO, and a split bundle is the thing most likely
+          # to sideload into a home screen icon that does nothing when tapped.
+          if [ -f "$APP/Caster.debug.dylib" ]; then
+            echo "::error::the build split itself into a debug dylib again; this will not sideload reliably"
             exit 1
           fi
-          file "$BIN" || true
-          ls -lh "$BIN"
 
-          # grep -a rather than strings: Swift stores short literals inline in
-          # code (small-string optimisation) instead of in __cstring, so strings
-          # misses them even when they are plainly there.
+          # Searched across the whole bundle rather than at one path. The first
+          # attempt looked only at Payload/Caster.app/Caster and concluded that
+          # every string in the app was missing - because under Xcode 16 that
+          # file was a 72 KB launcher stub and all 5 MB of code sat beside it in
+          # Caster.debug.dylib. A check that cannot survive the layout changing
+          # is not worth having.
+          #
+          # grep -a rather than strings, too: Swift keeps literals of fifteen
+          # UTF-8 bytes or fewer inline in the instruction stream instead of in
+          # __cstring, so strings never sees "TEST BUILD".
           probe() {
-            if grep -aqF "$2" "$BIN"; then
+            if grep -aqrF "$2" "$APP"; then
               echo "  present  $1: $2"
             else
               echo "  ABSENT   $1: $2"
