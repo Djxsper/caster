@@ -13,28 +13,18 @@ import XCTest
 /// Apple Developer Program, an App Store Connect record, a sandbox tester or a
 /// single euro spent. The first thing left untested after this is Apple's own
 /// servers.
+///
+/// Each test builds its own session rather than sharing one from `setUp`, so a
+/// transaction left behind by one test can never decide the outcome of another.
 @MainActor
 final class PurchaseFlowTests: XCTestCase {
-    private var session: SKTestSession!
-
-    override func setUp() async throws {
-        try await super.setUp()
-        session = try SKTestSession(contentsOf: Self.configurationURL)
-        // Nothing here should ever wait for a human to tap Confirm.
-        session.disableDialogs = true
-        session.resetToDefaultState()
-        session.clearTransactions()
-    }
-
-    override func tearDown() async throws {
-        session = nil
-        try await super.tearDown()
-    }
 
     // MARK: - Buying
 
     func testTheProductLoadsAndMatchesTheContract() async throws {
+        _ = try makeSession()
         let store = makeStore().service
+
         await store.loadProduct()
 
         let product = try XCTUnwrap(store.plusProduct, "the fixture product should load")
@@ -43,9 +33,10 @@ final class PurchaseFlowTests: XCTestCase {
     }
 
     func testBuyingPlusUnlocksEverything() async throws {
+        _ = try makeSession()
         let (entitlements, store) = makeStore()
-        await store.loadProduct()
 
+        await store.loadProduct()
         XCTAssertFalse(entitlements.hasPlus)
 
         await store.purchasePlus()
@@ -62,6 +53,7 @@ final class PurchaseFlowTests: XCTestCase {
     /// dying — that is the whole reason a pub with no signal still shows a Plus
     /// user their palettes.
     func testTheEntitlementSurvivesARelaunch() async throws {
+        _ = try makeSession()
         let defaults = Self.freshDefaults()
         let entitlements = EntitlementStore(defaults: defaults)
         let store = StoreService(entitlements: entitlements)
@@ -80,7 +72,9 @@ final class PurchaseFlowTests: XCTestCase {
     /// same path this takes. Keeping Plus after a refund would be theft in the
     /// other direction.
     func testLosingTheTransactionRevokesPlus() async throws {
+        let session = try makeSession()
         let (entitlements, store) = makeStore()
+
         await store.loadProduct()
         await store.purchasePlus()
         XCTAssertTrue(entitlements.hasPlus)
@@ -95,6 +89,7 @@ final class PurchaseFlowTests: XCTestCase {
     /// Nothing anybody typed is ever collateral damage. A refund takes the
     /// palettes and the ad-free-ness; it does not take the wheels.
     func testRevocationDoesNotTouchSavedWork() async throws {
+        let session = try makeSession()
         let defaults = Self.freshDefaults()
         let entitlements = EntitlementStore(defaults: defaults)
         let store = StoreService(entitlements: entitlements)
@@ -103,7 +98,9 @@ final class PurchaseFlowTests: XCTestCase {
         await store.loadProduct()
         await store.purchasePlus()
         wheels.capacity = entitlements.savedWheelCapacity
-        for index in 0..<6 { wheels.createWheel(named: "Wheel \(index)") }
+        for index in 0..<6 {
+            wheels.createWheel(named: "Wheel \(index)")
+        }
         XCTAssertEqual(wheels.wheels.count, 7)
 
         session.clearTransactions()
@@ -119,6 +116,8 @@ final class PurchaseFlowTests: XCTestCase {
     /// Required by App Review, and genuinely needed — entitlements follow an
     /// Apple ID, and this may be a new device.
     func testRestoreBringsPlusBackOnAFreshDevice() async throws {
+        _ = try makeSession()
+
         let (firstDevice, firstStore) = makeStore()
         await firstStore.loadProduct()
         await firstStore.purchasePlus()
@@ -135,6 +134,15 @@ final class PurchaseFlowTests: XCTestCase {
     }
 
     // MARK: - Helpers
+
+    /// A storefront with nothing bought and no dialogs to tap through.
+    private func makeSession() throws -> SKTestSession {
+        let session = try SKTestSession(contentsOf: Self.configurationURL)
+        session.disableDialogs = true
+        session.resetToDefaultState()
+        session.clearTransactions()
+        return session
+    }
 
     private func makeStore() -> (entitlements: EntitlementStore, service: StoreService) {
         let entitlements = EntitlementStore(defaults: Self.freshDefaults())

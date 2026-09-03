@@ -70,7 +70,7 @@ struct FakeAdView: View {
     /// How long a real interstitial usually withholds its close button.
     private static let closeDelay: TimeInterval = 3
 
-    @State private var secondsLeft = Int(closeDelay)
+    @State private var secondsLeft = Int(FakeAdView.closeDelay)
 
     var body: some View {
         ZStack {

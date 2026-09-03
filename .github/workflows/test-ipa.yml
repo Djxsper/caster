@@ -79,8 +79,8 @@ jobs:
           rm -rf Payload
           mkdir -p Payload
           cp -R "$APP" Payload/
-          zip -qry "Caster-test.ipa" Payload
-          ls -lh Caster-test.ipa
+          zip -qry "caster-adtest.ipa" Payload
+          ls -lh caster-adtest.ipa
 
       - name: Confirm the debug affordances actually made it in
         run: |
@@ -102,8 +102,8 @@ jobs:
 
       - uses: actions/upload-artifact@v6
         with:
-          name: Caster-test-ipa
-          path: Caster-test.ipa
+          name: caster-adtest
+          path: caster-adtest.ipa
           retention-days: 14
           if-no-files-found: error
 
@@ -111,8 +111,8 @@ jobs:
         run: |
           echo "### Test IPA ready" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "1. Download **Caster-test-ipa** from the Artifacts section of this run." >> "$GITHUB_STEP_SUMMARY"
-          echo "2. Unzip it on your iPhone to get \`Caster-test.ipa\`." >> "$GITHUB_STEP_SUMMARY"
+          echo "1. Download **caster-adtest** from the Artifacts section of this run." >> "$GITHUB_STEP_SUMMARY"
+          echo "2. Unzip it on your iPhone to get \`caster-adtest.ipa\`." >> "$GITHUB_STEP_SUMMARY"
           echo "3. Open it and choose **Share -> AltStore**." >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "It replaces any installed Caster and keeps its saved wheels and groups." >> "$GITHUB_STEP_SUMMARY"
