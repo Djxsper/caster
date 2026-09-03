@@ -58,6 +58,9 @@ jobs:
             -configuration Debug \
             -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath build \
+            -test-timeouts-enabled YES \
+            -default-test-execution-time-allowance 60 \
+            -maximum-test-execution-time-allowance 120 \
             CODE_SIGNING_ALLOWED=NO \
             COMPILER_INDEX_STORE_ENABLE=NO \
             2>&1 | tee build.log
@@ -90,6 +93,13 @@ jobs:
       # rather than after a ten-minute simulator dance. The booted UDID is
       # reused rather than naming a device, so this cannot drift from whatever
       # the runner image happens to ship.
+      #
+      # The execution-time allowances exist because a hung test is otherwise
+      # indistinguishable from a slow one. The first run of this step reported
+      # three suites passing in under two seconds, then sat on a StoreKit call
+      # for thirty-four minutes until the job timeout killed it, having said
+      # nothing about which test it was in. Now a stuck test fails in a minute
+      # and names itself.
       - name: Run unit tests
         run: |
           set -o pipefail
