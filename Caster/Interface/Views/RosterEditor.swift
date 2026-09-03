@@ -16,6 +16,7 @@ struct RosterEditor: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(RosterStore.self) private var rosterStore
     @Environment(WheelStore.self) private var wheelStore
+    @Environment(EntitlementStore.self) private var entitlements
     @Environment(\.theme) private var theme
 
     @State private var draftName = ""
@@ -23,6 +24,7 @@ struct RosterEditor: View {
     @State private var namePrompt: NamePrompt = .newRoster
     @State private var isNamePromptShown = false
     @State private var isDeleteConfirmShown = false
+    @State private var plusPrompt: PlusPrompt?
     @FocusState private var isAddFieldFocused: Bool
 
     var body: some View {
@@ -37,6 +39,7 @@ struct RosterEditor: View {
                 optionsMenu
             }
         }
+        .sheet(item: $plusPrompt) { PlusView(prompt: $0) }
         .alert(namePromptTitle, isPresented: $isNamePromptShown) {
             TextField("Group name", text: $groupNameDraft)
                 .textInputAutocapitalization(.words)
@@ -67,7 +70,14 @@ struct RosterEditor: View {
             Divider()
 
             Button {
-                promptForName(.newRoster)
+                // Checked before the name prompt, not after: being asked to
+                // name a group and only then told it cannot be made is the
+                // rudest possible order to do this in.
+                if rosterStore.canCreateRoster {
+                    promptForName(.newRoster)
+                } else {
+                    plusPrompt = .rosterLimit
+                }
             } label: {
                 Label("New group", systemImage: "plus.circle")
             }
@@ -138,7 +148,9 @@ struct RosterEditor: View {
                 }
 
                 Button {
-                    rosterStore.duplicateSelected()
+                    if !rosterStore.duplicateSelected() {
+                        plusPrompt = .rosterLimit
+                    }
                 } label: {
                     Label("Duplicate group", systemImage: "plus.square.on.square")
                 }
@@ -230,8 +242,8 @@ struct RosterEditor: View {
             .frame(maxWidth: .infinity)
         } else {
             List {
-                ForEach(Array(rosterStore.members.enumerated()), id: \.element.id) { index, member in
-                    memberRow(index: index, member: member)
+                ForEach(rosterStore.members) { member in
+                    memberRow(member)
                 }
                 .onDelete { rosterStore.remove(at: $0) }
                 .onMove { rosterStore.move(from: $0, to: $1) }
@@ -241,13 +253,30 @@ struct RosterEditor: View {
         }
     }
 
-    private func memberRow(index: Int, member: RosterMember) -> some View {
-        HStack(spacing: 12) {
+    /// Where this person will actually sit, or nil when they are sitting out.
+    ///
+    /// Taken from the *active* list rather than from the row's position, because
+    /// that is what the games seat. Someone switched off does not take a seat,
+    /// and everybody below them moves up a colour — so reading the index from
+    /// the full list would make the swatches lie about which ring is whose.
+    private func seatIndex(of member: RosterMember) -> Int? {
+        rosterStore.activeMembers.firstIndex { $0.id == member.id }
+    }
+
+    private func memberRow(_ member: RosterMember) -> some View {
+        let seat = seatIndex(of: member)
+
+        return HStack(spacing: 12) {
             // The seat colour the games will actually use, so the list doubles
-            // as a key to the rings and the potato.
-            Circle()
-                .fill(theme.playerColor(for: index))
-                .frame(width: 22, height: 22)
+            // as a key to the rings and the potato. Hollow when they are out.
+            Group {
+                if let seat {
+                    Circle().fill(theme.playerColor(for: seat))
+                } else {
+                    Circle().stroke(theme.border, lineWidth: 2)
+                }
+            }
+            .frame(width: 22, height: 22)
 
             // Bound through the store so an edit persists on every keystroke,
             // rather than needing a separate save step.
@@ -259,12 +288,41 @@ struct RosterEditor: View {
                 )
             )
             .font(.body)
-            .foregroundStyle(theme.textPrimary)
+            // Dimmed when they are sitting out. One `foregroundStyle` and not
+            // two: the inner modifier wins, so a second one further down the
+            // chain would never be seen.
+            .foregroundStyle(seat == nil ? theme.textSecondary : theme.textPrimary)
             .textInputAutocapitalization(.words)
             .autocorrectionDisabled()
             .submitLabel(.done)
+
+            activeToggle(for: member, isSeated: seat != nil)
         }
         .listRowBackground(theme.background)
+    }
+
+    /// The far-right switch from the notes: turn somebody off for tonight
+    /// without deleting them and retyping them next week.
+    ///
+    /// Shown to everyone rather than hidden behind Plus. A control nobody can
+    /// see is a feature nobody knows they are missing, and tapping it explains
+    /// itself — which is a fairer way to sell something than a list of bullets.
+    private func activeToggle(for member: RosterMember, isSeated: Bool) -> some View {
+        Button {
+            guard entitlements.hasActiveMemberToggle else {
+                plusPrompt = .activeMembers
+                return
+            }
+            environment.hapticEngine.playFeedback(type: .light)
+            rosterStore.setActive(id: member.id, !member.isActive)
+        } label: {
+            Image(systemName: isSeated ? "checkmark.circle.fill" : "circle")
+                .font(.title3)
+                .foregroundStyle(isSeated ? theme.accent : theme.border)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(isSeated ? "\(member.name) is playing" : "\(member.name) is sitting out")
+        .accessibilityAddTraits(isSeated ? [.isButton, .isSelected] : [.isButton])
     }
 
     // MARK: - Actions
@@ -290,8 +348,11 @@ struct RosterEditor: View {
     private func commitNamePrompt() {
         switch namePrompt {
         case .newRoster:
-            rosterStore.createRoster(named: groupNameDraft)
-            isAddFieldFocused = true
+            if rosterStore.createRoster(named: groupNameDraft) == nil {
+                plusPrompt = .rosterLimit
+            } else {
+                isAddFieldFocused = true
+            }
         case .renameRoster:
             rosterStore.renameSelected(to: groupNameDraft)
         }
@@ -369,5 +430,7 @@ extension View {
             .environment(AppEnvironment())
             .environment(RosterStore())
             .environment(WheelStore())
+            .environment(EntitlementStore())
+            .environment(StoreService(entitlements: EntitlementStore()))
     }
 }

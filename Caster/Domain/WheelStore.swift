@@ -79,6 +79,19 @@ final class WheelStore {
         wheels.count > 1
     }
 
+    /// How many wheels may be saved. Set from `EntitlementStore` at launch and
+    /// raised to `.max` by Plus; this layer knows nothing about purchases, in
+    /// the same way it knows nothing about SwiftUI.
+    ///
+    /// It caps *creating* a wheel and nothing else. A library already over the
+    /// line — from a build that predates the cap — is never hidden, trimmed or
+    /// deleted, only frozen at its current size.
+    var capacity: Int = FreeLimits.savedWheels
+
+    var canCreateWheel: Bool {
+        wheels.count < capacity
+    }
+
     // MARK: - Entries
 
     func add(_ label: String) {
@@ -154,8 +167,11 @@ final class WheelStore {
         save()
     }
 
+    /// - Returns: the new wheel's id, or nil when the library is full. The
+    ///   caller turns nil into the Plus sheet; the store only ever says no.
     @discardableResult
-    func createWheel(named name: String) -> UUID {
+    func createWheel(named name: String) -> UUID? {
+        guard canCreateWheel else { return nil }
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let wheel = SavedWheel(name: trimmed.isEmpty ? nextDefaultName() : trimmed)
         wheels.append(wheel)
@@ -172,8 +188,9 @@ final class WheelStore {
 
     /// Copies the wheel in play and switches to the copy. Entry ids are minted
     /// fresh so the two wheels never share identity.
-    func duplicateSelected() {
-        guard let wheel = selectedWheel else { return }
+    @discardableResult
+    func duplicateSelected() -> Bool {
+        guard canCreateWheel, let wheel = selectedWheel else { return false }
         let copy = SavedWheel(
             name: "\(wheel.name) copy",
             entries: wheel.entries.map { WheelEntry(label: $0.label) }
@@ -181,6 +198,7 @@ final class WheelStore {
         wheels.append(copy)
         selectedID = copy.id
         save()
+        return true
     }
 
     func deleteSelected() {

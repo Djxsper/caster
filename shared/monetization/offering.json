@@ -1,0 +1,73 @@
+{
+  "_comment": [
+    "The commercial contract between the two Caster apps.",
+    "",
+    "Caster is written twice - SwiftUI on iOS, Compose on Android - and the same",
+    "silent-drift problem that golden.json solves for game feel applies here for",
+    "money: a free limit loosened on one platform and not the other, or an ad cap",
+    "that is eight minutes on iPhone and three on Android, and nothing fails.",
+    "",
+    "This file is the fixture both sides read. Change a value here and both go",
+    "red until they agree. Do not edit it to make a test pass - edit it when the",
+    "offer is meant to change, then change both apps.",
+    "",
+    "Sibling of shared/parity/golden.json. Neither app owns it."
+  ],
+
+  "product": {
+    "_comment": "One non-consumable. No tiers, no subscription.",
+    "plusIdentifier": "com.jesperhaafkes.Caster.plus",
+    "playIdentifier": "caster_plus",
+    "displayName": "Caster Plus",
+    "kind": "non-consumable"
+  },
+
+  "freeLimits": {
+    "_comment": [
+      "What the free app allows. The games are never on this list: all six modes,",
+      "every sub-mode and every wheel entry stay free forever. Only the size of a",
+      "saved library is capped, and only when creating a new one - an existing",
+      "library over the cap is never hidden, trimmed or deleted."
+    ],
+    "savedWheels": 3,
+    "savedRosters": 3,
+    "presetWheelPacks": 2
+  },
+
+  "adPacing": {
+    "_comment": [
+      "One interstitial placement exists in the whole app: returning from a game",
+      "to the mode list. Never mid-round, never on a result reveal, never on a",
+      "Hot Potato pass, never on launch. Every clause below must pass.",
+      "",
+      "Rewarded ads are opt-in and cosmetic only - they may grant a theme or a",
+      "sound pack for the session and nothing else. Gating functional capacity",
+      "behind watching an ad is an App Review 3.2.2(vi) rejection risk."
+    ],
+    "minimumLaunches": 3,
+    "minimumRoundsCompleted": 5,
+    "quietPeriodSeconds": 480,
+    "perSessionCap": 2,
+    "launchGraceSeconds": 20
+  },
+
+  "plusBenefits": {
+    "_comment": [
+      "What the 3.99 buys. Kept here so the two paywalls cannot describe two",
+      "different products - and so neither of them can advertise something that",
+      "is not built yet. A false entry here becomes a false claim on a purchase",
+      "screen. Flip one to true on the day it works on both platforms, not on",
+      "the day it is planned."
+    ],
+    "unlimitedSavedWheels": true,
+    "unlimitedSavedRosters": true,
+    "activeMemberToggle": true,
+    "themePacks": true,
+    "removesInterstitials": true,
+
+    "_notYetBuilt": "Below are false on purpose. Do not list them on a paywall.",
+    "allPresetWheelPacks": false,
+    "soundPacks": false,
+    "persistentScoreboard": false
+  }
+}

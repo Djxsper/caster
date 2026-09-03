@@ -38,6 +38,7 @@ enum ScreenshotSupport {
         case "modeSelect":  return [.modeSelect]
         case "playerSetup": return [.modeSelect, .playerSetup]
         case "wheelSetup":  return [.modeSelect, .wheelSetup]
+        case "settings":    return [.modeSelect, .settings]
         default:            return []
         }
     }

@@ -12,6 +12,10 @@ Nobody notices until somebody plays both.
 
 `golden.json` is the fixture that makes drift fail a build. Neither app owns it.
 
+Its commercial twin is [`../monetization/offering.json`](../monetization/offering.json),
+which pins the free limits, the ad pacing and the product identifier. Same
+reasoning, different failure: the two apps quietly offering different deals.
+
 ## What is in it
 
 | Section | What it pins |
@@ -37,11 +41,17 @@ two apps disagree, and the fixture is the referee, not the scoreboard.
   `android/app/src/test/java/com/jesperhaafkes/caster/ParityTest.kt`, against
   `domain/GameTuning.kt`. The constants were hoisted out of the individual
   screens specifically so a test could see them.
-- **iOS does not read it yet.** The Xcode project has no test target at all — a
-  gap worth closing on its own merits, since `Caster/Domain` is pure logic with
-  no UI framework anywhere near it. Until then this is one side of a handshake:
-  it stops Android drifting from the agreed numbers, but it cannot stop iOS from
-  moving.
+- **iOS** now has a test target — `CasterTests`, run by
+  `.github/workflows/ios-simulator.yml` on every push. It reads the
+  monetization fixture in
+  [`OfferingParityTests`](../../CasterTests/OfferingParityTests.swift), via
+  `#filePath` rather than a bundled copy, so there is one file in the repository
+  and no build step that could let the two drift apart again.
+- **`golden.json` itself is still read only by Android.** The handshake is half
+  made: iOS has somewhere to put the test now, but the tuning constants in
+  `Caster/Domain` have not been hoisted the way `GameTuning.kt` was. Until they
+  are, this fixture stops Android drifting from the agreed numbers and cannot
+  stop iOS from moving.
 
 ## What it cannot cover
 

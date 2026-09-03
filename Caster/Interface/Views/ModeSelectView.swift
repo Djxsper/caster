@@ -3,6 +3,7 @@ import SwiftUI
 struct ModeSelectView: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(GameState.self) private var gameState
+    @Environment(EntitlementStore.self) private var entitlements
     @Environment(\.theme) private var theme
     @Binding var path: [Route]
 
@@ -37,6 +38,38 @@ struct ModeSelectView: View {
         }
         .navigationTitle("Game Modes")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    path.append(.settings)
+                } label: {
+                    Image(systemName: "gearshape")
+                }
+                .foregroundStyle(theme.textSecondary)
+                .accessibilityLabel("Settings")
+            }
+        }
+        .onAppear(perform: showInterstitialIfDue)
+    }
+
+    /// The app's one and only interstitial placement: arriving back here from a
+    /// game that has just been played.
+    ///
+    /// Both halves matter. `consumeArming()` proves this is a return from a
+    /// game rather than the way in, and `AdPacing` decides whether this
+    /// particular return has earned one — which for the first two sessions, the
+    /// first five rounds, and anything within eight minutes of the last one, it
+    /// has not. Nothing here can fire mid-round, because a game is not on
+    /// screen when it runs.
+    private func showInterstitialIfDue() {
+        guard environment.pacing.consumeArming() else { return }
+        guard environment.ads.isAvailable else { return }
+        guard environment.pacing.shouldShowInterstitial(hasPlus: entitlements.hasPlus) else {
+            return
+        }
+
+        environment.pacing.recordInterstitialShown()
+        environment.ads.presentInterstitial {}
     }
 
     /// The label names the next screen, because it is not always the game — two
@@ -111,5 +144,6 @@ struct ModeSelectView: View {
         ModeSelectView(path: .constant([]))
             .environment(AppEnvironment())
             .environment(GameState())
+            .environment(EntitlementStore())
     }
 }

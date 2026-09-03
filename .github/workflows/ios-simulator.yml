@@ -86,6 +86,23 @@ jobs:
           xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3
           echo "udid=$UDID" >> "$GITHUB_OUTPUT"
 
+      # Runs before the screenshots so a logic failure reports in seconds
+      # rather than after a ten-minute simulator dance. The booted UDID is
+      # reused rather than naming a device, so this cannot drift from whatever
+      # the runner image happens to ship.
+      - name: Run unit tests
+        run: |
+          set -o pipefail
+          xcodebuild test             -project "$PROJECT"             -scheme "$SCHEME"             -configuration Debug             -destination "id=${{ steps.sim.outputs.udid }}"             -derivedDataPath build             CODE_SIGNING_ALLOWED=NO             COMPILER_INDEX_STORE_ENABLE=NO             2>&1 | tee test.log
+
+      - name: Test results
+        if: always()
+        run: |
+          echo "--- suites ---"
+          grep -E "^Test Suite .*(passed|failed)" test.log | sort -u || echo "(none)"
+          echo "--- failures ---"
+          grep -E "error:|XCTAssert.*failed|Test Case .* failed" test.log | sort -u | head -40 || echo "(none)"
+
       - name: Install the app
         run: |
           set -eu
@@ -131,6 +148,7 @@ jobs:
           shoot 8-uppercut      uppercut
           shoot 9-tap-frenzy    tapFrenzy
           shoot 10-chicken      chicken
+          shoot 11-settings     settings
 
           ls -la screenshots
 

@@ -9,6 +9,7 @@ enum Route: Hashable {
     case playerSetup
     /// The pinwheel's entry list.
     case wheelSetup
+    case settings
     case game(GameMode)
 }
 
@@ -43,6 +44,8 @@ struct LaunchView: View {
                         Text("Ready to play")
                             .font(.system(.title3, design: .rounded))
                             .foregroundStyle(theme.textSecondary)
+
+                        testBuildBadge
                     }
 
                     PrimaryButton(title: "Begin") {
@@ -70,6 +73,8 @@ struct LaunchView: View {
             PlayerSetupView(path: $path)
         case .wheelSetup:
             WheelSetupView(path: $path)
+        case .settings:
+            SettingsView()
         case .game(let mode):
             GameHostView(mode: mode)
         }
@@ -100,6 +105,27 @@ struct LaunchView: View {
         #endif
     }
 
+    /// So a test build is never mistaken for the real one — they share a bundle
+    /// id, which means installing one replaces the other.
+    ///
+    /// Hidden while CI is driving the app to a screen, or it would end up in the
+    /// screenshots on the README and the App Store listing.
+    @ViewBuilder
+    private var testBuildBadge: some View {
+        #if DEBUG
+        if ScreenshotSupport.requestedRoute.isEmpty {
+            Text("TEST BUILD")
+                .font(.system(.caption2, design: .monospaced))
+                .fontWeight(.bold)
+                .foregroundStyle(theme.background)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(theme.warning, in: Capsule())
+                .accessibilityLabel("Test build")
+        }
+        #endif
+    }
+
     private var imageIcon: some View {
         Image(systemName: "circle.fill")
             .resizable()
@@ -119,10 +145,29 @@ struct LaunchView: View {
 
 /// Routes a mode to its screen. One place to add a game, rather than a switch
 /// buried in `navigationDestination`.
+///
+/// Also the only place that arms the interstitial. Arming on a game appearing —
+/// rather than letting the mode list guess from its own `onAppear` — is what
+/// keeps the single placement single: the mode list is reached on the way in,
+/// on the way back from the wheel editor and on the way back from a game, and
+/// only the last of those is allowed to show anything.
 struct GameHostView: View {
+    @Environment(AppEnvironment.self) private var environment
+
     let mode: GameMode
 
     var body: some View {
+        gameView
+            .onAppear {
+                environment.pacing.armForInterstitial()
+                // Fetched now so that if one is shown on the way out, it is
+                // already in memory and the transition does not stutter.
+                environment.ads.preload()
+            }
+    }
+
+    @ViewBuilder
+    private var gameView: some View {
         switch mode {
         case .fingerPicker: FingerPickerView()
         case .pinwheel: PinwheelView()
@@ -140,4 +185,7 @@ struct GameHostView: View {
         .environment(GameState())
         .environment(WheelStore())
         .environment(RosterStore())
+        .environment(ThemeStore())
+        .environment(EntitlementStore())
+        .environment(StoreService(entitlements: EntitlementStore()))
 }

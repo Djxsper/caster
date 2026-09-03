@@ -46,5 +46,7 @@ struct PlayerSetupView: View {
             .environment(GameState())
             .environment(RosterStore())
             .environment(WheelStore())
+            .environment(EntitlementStore())
+            .environment(StoreService(entitlements: EntitlementStore()))
     }
 }

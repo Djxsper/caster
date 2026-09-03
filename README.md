@@ -45,6 +45,26 @@ no accounts and no network.
 
 ---
 
+## What costs money
+
+Nothing here does. All six games, every mode, as many players and wheel entries
+as you like, no ads inside a round — that is the app, and it stays the app.
+
+The App Store build adds **Caster Plus**, one payment and not a subscription,
+which raises the saved-wheel and saved-group caps, lets you sit somebody out
+without deleting them, adds four palettes, and turns off the one interstitial
+the free build shows on the way back from a game. The rules that ad obeys are
+written down in [`shared/monetization/offering.json`](shared/monetization/offering.json)
+and proved in [`AdPacingTests`](CasterTests/AdPacingTests.swift): never mid-round,
+never in the first two sessions, never within eight minutes of the last one,
+never more than twice in a sitting.
+
+Sideloaded builds cannot complete a StoreKit purchase, so this one is free in
+every sense. Anyone who was using the app before the caps existed keeps their
+libraries unlimited for good.
+
+---
+
 ## Install on iPhone or iPad
 
 **Requirements:** iOS 17.0 or newer. Works on iPhone and iPad.
@@ -130,8 +150,10 @@ Two codebases drift, and the drift is silent: a window widened on one platform
 and not the other makes the same game play differently on the two phones, and
 nothing fails. The numbers that decide how a round feels therefore live in
 [`shared/parity/golden.json`](shared/parity/golden.json), which neither app owns
-and both test suites are meant to read. Android reads it today; the iOS project
-has no test target yet. See [the parity notes](shared/parity/README.md).
+and both test suites are meant to read. Android reads it today; iOS now has a
+test target, but its tuning constants have not been hoisted out of the screens
+the way Android's were, so it reads the commercial fixture and not yet this one.
+See [the parity notes](shared/parity/README.md).
 
 Shipping it is written up in [`android/RELEASING.md`](android/RELEASING.md).
 
@@ -139,18 +161,24 @@ Shipping it is written up in [`android/RELEASING.md`](android/RELEASING.md).
 
 ## Building and hacking on it
 
-No package manager, no dependencies, no generated files — clone and open.
+No package manager, no dependencies, no generated files — clone and open. That
+is still true of this repository, and is meant to stay true: the ad SDK the App
+Store build links is behind an `ADS_ENABLED` build flag *and* a `canImport`
+check, so a plain clone resolves nothing and shows no ads. See
+[`AdPresenter.swift`](Caster/Interface/Ads/AdPresenter.swift).
 
 ```
 Caster/
 ├── App/            Entry point, shared services, CI deep-link support
+│   └── Store/      StoreKit 2, for the one thing there is to buy
 ├── Domain/         Game modes, saved rosters and wheels, the weighted draw
 ├── Interface/
+│   ├── Ads/        A protocol and a no-op; the real one is opt-in at build time
 │   ├── Audio/      Cue tones, synthesised at launch (no audio assets ship)
 │   ├── Components/ Buttons, finger rings, the shared touch surface
 │   ├── Haptics/    Core Haptics with a UIKit fallback
-│   ├── Themes/     Light and dark palettes
-│   └── Views/      Launch, setup and one screen per game
+│   ├── Themes/     Light and dark palettes, and the four Plus ones
+│   └── Views/      Launch, setup, settings and one screen per game
 └── UIKitBridge/    True multi-touch, and the slot tracking built on it
 ```
 
@@ -179,10 +207,22 @@ A few things worth knowing before you change something:
 
 ### CI
 
-Every push builds on a macOS runner, boots a simulator, screenshots every screen
-and packages an unsigned IPA — see
+Every push builds on a macOS runner, runs the `CasterTests` suite on a booted
+simulator, screenshots every screen and packages an unsigned IPA — see
 [`.github/workflows/ios-simulator.yml`](.github/workflows/ios-simulator.yml).
 Artifacts land on the run page.
+
+The tests include the purchase flow. `SKTestSession` gives `StoreService` a
+simulated storefront, so buying, losing and restoring Plus are all exercised
+against the unmodified code with no Apple Developer account, no sandbox tester
+and no money — see [`CasterTests/`](CasterTests).
+
+There is also a manually-triggered
+[`test-ipa.yml`](.github/workflows/test-ipa.yml) that builds an unsigned *Debug*
+device IPA as a run artifact. That build carries a stand-in interstitial, a
+switch to pretend Plus is bought, and a TEST BUILD badge — all `#if DEBUG`, none
+of it in a Release build. It exists so the ad pacing can be judged on a real
+phone before committing to an ad network.
 
 Pushing a `v*` tag additionally publishes a GitHub Release with the IPA attached
 ([`release.yml`](.github/workflows/release.yml)):
@@ -195,6 +235,8 @@ git push origin v1.0.0
 Note that CI can only prove the app *compiles* and that each screen renders. The
 simulator has no real multi-touch, so the finger tracking, reaction timing and
 audio are only ever verified on a device.
+
+Shipping it to the App Store is written up in [`docs/APP-STORE.md`](docs/APP-STORE.md).
 
 ---
 

@@ -8,9 +8,26 @@ struct RosterMember: Identifiable, Hashable, Codable {
     var id = UUID()
     var name: String
 
-    init(id: UUID = UUID(), name: String) {
+    /// Whether they are playing tonight. Someone who is out stays on the list
+    /// with their name and their tally intact — the alternative was deleting
+    /// them and retyping them next week, which is what the store exists to stop.
+    var isActive: Bool
+
+    init(id: UUID = UUID(), name: String, isActive: Bool = true) {
         self.id = id
         self.name = name
+        self.isActive = isActive
+    }
+
+    /// Hand-written so rosters saved before the flag existed still decode. The
+    /// synthesised initialiser treats a missing key as an error rather than
+    /// falling back to the property's default, which would have thrown away
+    /// every group anyone had already saved.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        isActive = try container.decodeIfPresent(Bool.self, forKey: .isActive) ?? true
     }
 }
 
@@ -68,12 +85,24 @@ final class RosterStore {
         selectedRoster?.members ?? []
     }
 
+    /// Whether the `isActive` flags are obeyed. Off unless Plus is held, so a
+    /// refund can never leave somebody with a group that quietly excludes half
+    /// the table — the flags stay on disk, they just stop applying.
+    ///
+    /// Set from `EntitlementStore` at launch, exactly like `capacity`.
+    var honoursActiveFlags = false
+
+    /// Who is actually at the table. Every game reads this, not `members`.
+    var activeMembers: [RosterMember] {
+        honoursActiveFlags ? members.filter(\.isActive) : members
+    }
+
     var names: [String] {
-        members.map(\.name)
+        activeMembers.map(\.name)
     }
 
     var canPlay: Bool {
-        members.count >= PlayerLimits.minimum
+        activeMembers.count >= PlayerLimits.minimum
     }
 
     /// Unlike the wheel, a roster is bounded: the games address people by seat
@@ -86,6 +115,15 @@ final class RosterStore {
     /// The last roster cannot be deleted — there always has to be one to edit.
     var canDeleteRoster: Bool {
         rosters.count > 1
+    }
+
+    /// How many groups may be saved. The twin of `WheelStore.capacity`: set from
+    /// `EntitlementStore` at launch, raised to `.max` by Plus, and applied only
+    /// to *creating* a group. An existing library is never trimmed to fit.
+    var capacity: Int = FreeLimits.savedRosters
+
+    var canCreateRoster: Bool {
+        rosters.count < capacity
     }
 
     // MARK: - Members
@@ -119,6 +157,14 @@ final class RosterStore {
             for index in offsets.sorted(by: >) where roster.members.indices.contains(index) {
                 roster.members.remove(at: index)
             }
+        }
+    }
+
+    /// Sits somebody out, or brings them back. Never deletes.
+    func setActive(id: UUID, _ isActive: Bool) {
+        updateSelected { roster in
+            guard let index = roster.members.firstIndex(where: { $0.id == id }) else { return }
+            roster.members[index].isActive = isActive
         }
     }
 
@@ -167,8 +213,11 @@ final class RosterStore {
         save()
     }
 
+    /// - Returns: the new group's id, or nil when the library is full. The
+    ///   caller turns nil into the Plus sheet; the store only ever says no.
     @discardableResult
-    func createRoster(named name: String) -> UUID {
+    func createRoster(named name: String) -> UUID? {
+        guard canCreateRoster else { return nil }
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let roster = SavedRoster(name: trimmed.isEmpty ? nextDefaultName() : trimmed)
         rosters.append(roster)
@@ -185,8 +234,9 @@ final class RosterStore {
 
     /// Copies the roster at the table and switches to the copy. Member ids are
     /// minted fresh so the two rosters never share identity.
-    func duplicateSelected() {
-        guard let roster = selectedRoster else { return }
+    @discardableResult
+    func duplicateSelected() -> Bool {
+        guard canCreateRoster, let roster = selectedRoster else { return false }
         let copy = SavedRoster(
             name: "\(roster.name) copy",
             members: roster.members.map { RosterMember(name: $0.name) }
@@ -194,6 +244,7 @@ final class RosterStore {
         rosters.append(copy)
         selectedID = copy.id
         save()
+        return true
     }
 
     func deleteSelected() {

@@ -22,6 +22,7 @@ struct WheelSetupView: View {
     @State private var namePrompt: NamePrompt = .newWheel
     @State private var isNamePromptShown = false
     @State private var isDeleteConfirmShown = false
+    @State private var plusPrompt: PlusPrompt?
     @FocusState private var isAddFieldFocused: Bool
 
     var body: some View {
@@ -52,6 +53,7 @@ struct WheelSetupView: View {
                 optionsMenu
             }
         }
+        .sheet(item: $plusPrompt) { PlusView(prompt: $0) }
         .alert(namePromptTitle, isPresented: $isNamePromptShown) {
             TextField("Wheel name", text: $nameDraft)
                 .textInputAutocapitalization(.words)
@@ -80,7 +82,14 @@ struct WheelSetupView: View {
             Divider()
 
             Button {
-                promptForName(.newWheel)
+                // Checked before the name prompt rather than after it: being
+                // asked to name a wheel and only then told it cannot be made is
+                // the rudest possible order to do this in.
+                if wheelStore.canCreateWheel {
+                    promptForName(.newWheel)
+                } else {
+                    plusPrompt = .wheelLimit
+                }
             } label: {
                 Label("New wheel", systemImage: "plus.circle")
             }
@@ -150,7 +159,9 @@ struct WheelSetupView: View {
                 }
 
                 Button {
-                    wheelStore.duplicateSelected()
+                    if !wheelStore.duplicateSelected() {
+                        plusPrompt = .wheelLimit
+                    }
                 } label: {
                     Label("Duplicate wheel", systemImage: "plus.square.on.square")
                 }
@@ -296,8 +307,11 @@ struct WheelSetupView: View {
     private func commitNamePrompt() {
         switch namePrompt {
         case .newWheel:
-            wheelStore.createWheel(named: nameDraft)
-            isAddFieldFocused = true
+            if wheelStore.createWheel(named: nameDraft) == nil {
+                plusPrompt = .wheelLimit
+            } else {
+                isAddFieldFocused = true
+            }
         case .renameWheel:
             wheelStore.renameSelected(to: nameDraft)
         }
@@ -327,5 +341,7 @@ struct WheelSetupView: View {
             .environment(AppEnvironment())
             .environment(WheelStore())
             .environment(RosterStore())
+            .environment(EntitlementStore())
+            .environment(StoreService(entitlements: EntitlementStore()))
     }
 }

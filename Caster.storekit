@@ -1,0 +1,29 @@
+{
+  "identifier": "CASTER-LOCAL-STOREKIT",
+  "nonRenewingSubscriptions": [],
+  "products": [
+    {
+      "displayPrice": "3.99",
+      "familyShareable": true,
+      "internalID": "CASTERPLUS0001",
+      "localizations": [
+        {
+          "description": "Unlimited saved wheels and groups, the option to sit somebody out without deleting them, four more palettes, and no interstitials. One payment, not a subscription.",
+          "displayName": "Caster Plus",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "com.jesperhaafkes.Caster.plus",
+      "referenceName": "Caster Plus",
+      "type": "NonConsumable"
+    }
+  ],
+  "settings": {
+    "_askToBuyEnabled": false,
+    "_billingIssuesEnabled": false,
+    "_storefront": "NLD",
+    "_storeKitErrors": []
+  },
+  "subscriptionGroups": [],
+  "version": { "major": 3, "minor": 0 }
+}

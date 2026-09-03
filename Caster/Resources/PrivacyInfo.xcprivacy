@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!--
+        Apple requires this manifest for App Store submission.
+
+        As it stands the app collects nothing and tracks nobody: there is no
+        network code, no accounts and no analytics SDK. The counters behind the
+        ad pacing rules live in UserDefaults and never leave the device, which is
+        why NSPrivacyTracking is false and the collected-data list is empty.
+
+        When the Google Mobile Ads SDK is added for the App Store build, three
+        things change and all three are required:
+          - NSPrivacyTracking becomes <true/>
+          - NSPrivacyTrackingDomains gains AdMob's domains
+          - NSPrivacyCollectedDataTypes gains the identifiers and usage data
+            AdMob collects, declared for Third-Party Advertising
+        The SDK ships its own manifest for its own APIs; this file covers ours.
+    -->
+    <key>NSPrivacyTracking</key>
+    <false/>
+
+    <key>NSPrivacyTrackingDomains</key>
+    <array/>
+
+    <key>NSPrivacyCollectedDataTypes</key>
+    <array/>
+
+    <key>NSPrivacyAccessedAPITypes</key>
+    <array>
+        <dict>
+            <!--
+                UserDefaults. Every read and write is this app's own data —
+                saved wheels, saved groups, the sound and palette preferences,
+                and the local pacing counters. Nothing is shared with anything.
+            -->
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <string>CA92.1</string>
+            </array>
+        </dict>
+    </array>
+</dict>
+</plist>

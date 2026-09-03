@@ -1,0 +1,120 @@
+name: Build a test IPA
+
+# A personal build for testing on your own device, before any of it is real.
+#
+# Deliberately NOT a GitHub Release: this is a Debug build carrying the fake
+# interstitial, the "pretend Plus is bought" switch and the TEST BUILD badge, and
+# none of that belongs on the public downloads page. It is published as a run
+# artifact instead, which only you can reach.
+#
+# `release.yml` remains the public path and builds Release, where every one of
+# those affordances compiles out.
+#
+#   Actions -> Build a test IPA -> Run workflow
+#
+# The IPA is unsigned, exactly like the public one — AltStore / SideStore re-sign
+# it with your own Apple ID at install time.
+#
+# It shares the bundle id com.jesperhaafkes.Caster, so installing it REPLACES a
+# normal Caster and inherits its saved wheels and groups. That is useful for
+# testing the grandfather clause; it also means your real data is what you are
+# experimenting on.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-ipa:
+    name: Build an unsigned Debug IPA for a device
+    runs-on: macos-15
+    timeout-minutes: 40
+
+    env:
+      SCHEME: Caster
+      PROJECT: Caster.xcodeproj
+
+    steps:
+      - uses: actions/checkout@v5
+
+      # The project uses objectVersion 77 (file-system synchronized groups),
+      # which needs Xcode 16 or newer to open.
+      - name: Select the newest installed Xcode
+        run: |
+          set -eu
+          NEWEST=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V 2>/dev/null | tail -1)
+          if [ -n "$NEWEST" ]; then
+            sudo xcode-select -s "$NEWEST"
+          fi
+          xcodebuild -version
+          MAJOR=$(xcodebuild -version | head -1 | sed -E 's/Xcode ([0-9]+).*/\1/')
+          if [ "$MAJOR" -lt 16 ]; then
+            echo "::error::Xcode 16+ required (found $MAJOR)."
+            exit 1
+          fi
+
+      - name: Build the unsigned Debug device IPA
+        run: |
+          set -eu
+          set -o pipefail
+          # Debug, unlike release.yml. That is the entire point of this workflow:
+          # everything behind #if DEBUG has to survive into the binary.
+          xcodebuild build \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration Debug \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build-device \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            2>&1 | tail -30
+
+          APP=$(find build-device/Build/Products/Debug-iphoneos -maxdepth 1 -name "Caster.app" | head -1)
+          if [ -z "$APP" ]; then
+            echo "::error::Caster.app not produced for device"
+            find build-device/Build/Products -maxdepth 2 || true
+            exit 1
+          fi
+
+          rm -rf Payload
+          mkdir -p Payload
+          cp -R "$APP" Payload/
+          zip -qry "Caster-test.ipa" Payload
+          ls -lh Caster-test.ipa
+
+      - name: Confirm the debug affordances actually made it in
+        run: |
+          set -eu
+          # A Release build would silently strip these, and the artifact would
+          # look identical from the outside. Cheaper to check here than to find
+          # out after sideloading it.
+          BIN=Payload/Caster.app/Caster
+          MISSING=0
+          for NEEDLE in "TEST BUILD" "An ad would appear here" "Pretend Plus is bought"; do
+            if strings "$BIN" | grep -qF "$NEEDLE"; then
+              echo "found: $NEEDLE"
+            else
+              echo "::error::missing from the binary: $NEEDLE"
+              MISSING=1
+            fi
+          done
+          [ "$MISSING" -eq 0 ] || exit 1
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: Caster-test-ipa
+          path: Caster-test.ipa
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: How to install it
+        run: |
+          echo "### Test IPA ready" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "1. Download **Caster-test-ipa** from the Artifacts section of this run." >> "$GITHUB_STEP_SUMMARY"
+          echo "2. Unzip it on your iPhone to get \`Caster-test.ipa\`." >> "$GITHUB_STEP_SUMMARY"
+          echo "3. Open it and choose **Share -> AltStore**." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "It replaces any installed Caster and keeps its saved wheels and groups." >> "$GITHUB_STEP_SUMMARY"
+          echo "Look for the orange **TEST BUILD** badge on the launch screen, and the" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Test build** section at the bottom of Settings." >> "$GITHUB_STEP_SUMMARY"

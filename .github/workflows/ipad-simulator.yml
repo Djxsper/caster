@@ -133,6 +133,7 @@ jobs:
           shoot 8-uppercut      uppercut
           shoot 9-tap-frenzy    tapFrenzy
           shoot 10-chicken      chicken
+          shoot 11-settings     settings
 
           echo "--- ${{ steps.sim.outputs.name }} ---"
           sips -g pixelWidth -g pixelHeight screenshots/2-mode-select.png
