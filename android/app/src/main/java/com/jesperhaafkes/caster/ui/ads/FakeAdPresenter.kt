@@ -1,5 +1,6 @@
 package com.jesperhaafkes.caster.ui.ads
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -101,6 +102,12 @@ class FakeAdPresenter : AdPresenter {
 @Composable
 fun FakeAdScreen(onDismiss: () -> Unit) {
     val theme = LocalTheme.current
+
+    // A real interstitial does not let the back gesture out of it, and without
+    // this one the press would fall through to the navigation stack behind and
+    // pop a screen you cannot see. Swallowing it is both more faithful and the
+    // only way the close-delay below actually costs anything.
+    BackHandler(enabled = true) { }
 
     /** How long a real interstitial usually withholds its close button. */
     val closeDelaySeconds = 3
