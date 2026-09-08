@@ -9,6 +9,13 @@ item.
 The monetization contract both platforms read is
 [`shared/monetization/offering.json`](../shared/monetization/offering.json).
 
+> **Android goes first.** The plan is now to release on Google Play and bring
+> this one along once that has an audience — see
+> [`android/RELEASING.md`](../android/RELEASING.md). That order costs nothing
+> here: the $99/year is only worth paying once there is a reason to, and
+> everything in this document keeps until then. The one thing worth doing early
+> is Phase 0, because the banking review takes days whenever you start it.
+
 ---
 
 ## Phase 0 — accounts and paperwork (no code, do this first)

@@ -19,7 +19,6 @@ struct LaunchView: View {
     @Environment(RosterStore.self) private var rosterStore
     @Environment(\.theme) private var theme
     @State private var path: [Route] = []
-    @State private var isPulsing = false
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -28,12 +27,7 @@ struct LaunchView: View {
                     .ignoresSafeArea()
 
                 VStack(spacing: 24) {
-                    imageIcon
-                        .scaleEffect(isPulsing ? 1.0 : 0.85)
-                        .animation(
-                            .easeInOut(duration: 1.2).repeatForever(autoreverses: true),
-                            value: isPulsing
-                        )
+                    CasterMark()
 
                     VStack(spacing: 16) {
                         Text("Caster")
@@ -81,8 +75,6 @@ struct LaunchView: View {
     }
 
     private func handleAppear() {
-        // Kick the repeating animation once the view is on screen.
-        isPulsing = true
         environment.hapticEngine.startEngine()
         environment.soundEngine.start()
 
@@ -124,22 +116,6 @@ struct LaunchView: View {
                 .accessibilityLabel("Test build")
         }
         #endif
-    }
-
-    private var imageIcon: some View {
-        Image(systemName: "circle.fill")
-            .resizable()
-            .aspectRatio(contentMode: .fit)
-            .frame(width: 80, height: 80)
-            .foregroundStyle(theme.accent)
-            .overlay(
-                Image(systemName: "circle.dashed")
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 110, height: 110)
-                    .foregroundStyle(theme.accent.opacity(0.3))
-            )
-            .accessibilityHidden(true)
     }
 }
 
@@ -188,4 +164,87 @@ struct GameHostView: View {
         .environment(ThemeStore())
         .environment(EntitlementStore())
         .environment(StoreService(entitlements: EntitlementStore()))
+}
+
+/// The launch page's mark: a solid core that breathes, inside a dashed ring
+/// that turns.
+///
+/// Driven from a clock rather than from a `@State` flag flipped in `onAppear`.
+/// The flag version stalled, which is what made it look like it was coming in
+/// and out of the screen: `onAppear` sets it once, and returning to the root of
+/// a `NavigationStack` runs `onAppear` again with the value *already* true — so
+/// nothing re-triggers, while the `repeatForever` animation that was cancelled
+/// on the way out never resumes. The mark was left frozen at whatever scale it
+/// had reached, then jumped when something else in the view happened to
+/// invalidate it.
+///
+/// Reading the angle and the scale from `context.date` makes both a pure
+/// function of time. There is no state to get stuck in, nothing to restart, and
+/// no dependence on how many times this view has been on screen.
+///
+/// The pulse is a sine rather than an `easeInOut` ramp for the same reason: a
+/// ramp has two endpoints where the motion stops dead, and stopping dead twice
+/// a second is exactly what reads as "zooming in and out" instead of
+/// "breathing".
+private struct CasterMark: View {
+    @Environment(\.theme) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// Seconds for one full turn of the ring. Slow on purpose — this is meant
+    /// to be noticed only if you look at it.
+    private static let turnPeriod: Double = 9
+    /// Seconds for one breath, in and out.
+    private static let breathPeriod: Double = 3.2
+
+    private static let coreDiameter: CGFloat = 80
+    private static let ringDiameter: CGFloat = 110
+    private static let haloDiameter: CGFloat = 132
+
+    var body: some View {
+        // Paused rather than branched, so the two paths cannot drift apart.
+        TimelineView(.animation(paused: reduceMotion)) { context in
+            let time = context.date.timeIntervalSinceReferenceDate
+            mark(
+                scale: reduceMotion ? 1 : breath(at: time),
+                angle: reduceMotion ? 0 : angle(at: time)
+            )
+        }
+        .frame(width: Self.haloDiameter, height: Self.haloDiameter)
+        .accessibilityHidden(true)
+    }
+
+    private func mark(scale: Double, angle: Double) -> some View {
+        ZStack {
+            // Sits the mark *in* the page rather than on top of it. The blur is
+            // what keeps it from reading as a third circle.
+            Circle()
+                .fill(theme.accent.opacity(0.12))
+                .frame(width: Self.haloDiameter, height: Self.haloDiameter)
+                .blur(radius: 14)
+
+            Circle()
+                .stroke(
+                    theme.accent.opacity(0.35),
+                    style: StrokeStyle(lineWidth: 4, lineCap: .round, dash: [10, 12])
+                )
+                .frame(width: Self.ringDiameter, height: Self.ringDiameter)
+                .rotationEffect(.degrees(angle))
+
+            Circle()
+                .fill(theme.accent)
+                .frame(width: Self.coreDiameter, height: Self.coreDiameter)
+                .scaleEffect(scale)
+        }
+    }
+
+    /// 0.92…1.0. Shallow deliberately: the old one travelled 0.85…1.0, which on
+    /// an 80-point circle is a 12-point swing and far too much movement for
+    /// something that never stops.
+    private func breath(at time: TimeInterval) -> Double {
+        0.96 + 0.04 * sin(time * 2 * .pi / Self.breathPeriod)
+    }
+
+    private func angle(at time: TimeInterval) -> Double {
+        (time / Self.turnPeriod).truncatingRemainder(dividingBy: 1) * 360
+    }
 }

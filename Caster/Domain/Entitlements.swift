@@ -19,6 +19,50 @@ enum StoreProduct {
     static let plus = "com.jesperhaafkes.Caster.plus"
 }
 
+/// One line on the paywall, and the key under `plusBenefits` in
+/// `shared/monetization/offering.json` that says whether it is true.
+struct PlusBenefit {
+    let key: String
+    let symbol: String
+    let text: String
+}
+
+/// Everything the paywall claims Plus adds.
+///
+/// A list rather than four rows written into `PlusView`, so
+/// `OfferingParityTests` can hold every claim against the contract: each `key`
+/// must be `true` under `plusBenefits` in `offering.json`. That file carries
+/// `soundPacks`, `persistentScoreboard` and `allPresetWheelPacks` as `false` on
+/// purpose because they are not built, and the test is what stops one of them
+/// drifting back onto a purchase screen before it works.
+///
+/// A benefit named here that the app cannot do is not a copy mistake. It is a
+/// false claim on a screen that takes money — and an App Review rejection.
+enum PlusBenefits {
+    static let advertised: [PlusBenefit] = [
+        PlusBenefit(
+            key: "unlimitedSavedWheels",
+            symbol: "infinity",
+            text: "Unlimited saved wheels and groups"
+        ),
+        PlusBenefit(
+            key: "activeMemberToggle",
+            symbol: "person.crop.circle.badge.checkmark",
+            text: "Sit people out without deleting them"
+        ),
+        PlusBenefit(
+            key: "themePacks",
+            symbol: "paintpalette.fill",
+            text: "Four more palettes"
+        ),
+        PlusBenefit(
+            key: "removesInterstitials",
+            symbol: "hand.raised.fill",
+            text: "No interstitials"
+        ),
+    ]
+}
+
 /// Which cap a screen ran into, so the Plus sheet can name it rather than
 /// showing the same anonymous wall everywhere. The stores stay ignorant of
 /// this — they only ever answer "no".

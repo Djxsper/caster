@@ -33,6 +33,40 @@ final class OfferingParityTests: XCTestCase {
         XCTAssertEqual(product["plusIdentifier"] as? String, StoreProduct.plus)
     }
 
+    func testThePaywallOnlyClaimsThingsThatAreBuilt() throws {
+        let benefits = try offering(section: "plusBenefits")
+
+        for item in PlusBenefits.advertised {
+            let value = benefits[item.key] as? Bool
+            XCTAssertNotNil(
+                value,
+                "the paywall lists \"\(item.text)\" but offering.json has no '\(item.key)' key"
+            )
+            XCTAssertEqual(
+                value, true,
+                "The paywall claims \"\(item.text)\" but '\(item.key)' is false in "
+                    + "offering.json. That is a false claim on a screen that takes "
+                    + "money. Build it and flip the flag, or take the line off the "
+                    + "paywall — do not edit the flag to make this pass."
+            )
+        }
+    }
+
+    func testNothingUnbuiltHasQuietlyBecomeAdvertised() throws {
+        // The other direction of the same guard. These three are false on
+        // purpose; this fails if one is flipped true without also being put on
+        // both paywalls, which is the moment they would otherwise disagree.
+        let benefits = try offering(section: "plusBenefits")
+        for key in ["allPresetWheelPacks", "soundPacks", "persistentScoreboard"] {
+            guard benefits[key] as? Bool == true else { continue }
+            XCTAssertTrue(
+                PlusBenefits.advertised.contains { $0.key == key },
+                "'\(key)' is now true in offering.json, so it must appear on both "
+                    + "paywalls — add it to PlusBenefits here and in Entitlements.kt."
+            )
+        }
+    }
+
     // MARK: - Fixture
 
     private func offering(section: String) throws -> [String: Any] {

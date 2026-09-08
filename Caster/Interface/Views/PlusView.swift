@@ -110,14 +110,14 @@ struct PlusView: View {
                 .fontWeight(.bold)
                 .foregroundStyle(theme.textPrimary)
 
-            // Only what actually ships. A benefit listed here that the app
-            // cannot yet do is a false claim on a purchase screen, which is
-            // both dishonest and an App Review rejection. Sound packs and the
-            // persistent scoreboard go on this list on the day they work.
-            benefit("infinity", "Unlimited saved wheels and groups")
-            benefit("person.crop.circle.badge.checkmark", "Sit people out without deleting them")
-            benefit("paintpalette.fill", "Four more palettes")
-            benefit("hand.raised.fill", "No interstitials")
+            // Read from `PlusBenefits` rather than written out here, so
+            // `OfferingParityTests` can hold every line on this screen against
+            // the shared contract. A benefit listed here that the app cannot yet
+            // do is a false claim on a purchase screen, which is both dishonest
+            // and an App Review rejection.
+            ForEach(PlusBenefits.advertised, id: \.key) { item in
+                benefit(item.symbol, item.text)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
