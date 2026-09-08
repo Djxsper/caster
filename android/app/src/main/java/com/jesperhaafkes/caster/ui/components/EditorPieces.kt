@@ -306,6 +306,13 @@ private fun FieldBox(
  */
 @Composable
 fun EditorRow(
+    /**
+     * The colour of the *seat* this row's entry will occupy, not of the row.
+     * With somebody sitting out, everyone below them moves up a colour — see
+     * [com.jesperhaafkes.caster.domain.RosterStore.activeMembers] — so a swatch
+     * taken from the row's own position would lie about which ring is whose.
+     * Ignored entirely when [isActive] is false, which draws a hollow ring.
+     */
     swatch: Color,
     value: String,
     onValueChange: (String) -> Unit,
@@ -329,13 +336,23 @@ fun EditorRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Box(
-            Modifier
-                .size(22.dp)
-                .clip(CircleShape)
-                .alpha(if (isSeated) 1f else 0.3f)
-                .background(swatch)
-        )
+        // Hollow rather than dimmed when they are sitting out. A faded disc
+        // reads as a rendering artefact; an empty ring reads as "no seat",
+        // which is the actual state. Matches RosterEditor.swift:271-278.
+        if (isSeated) {
+            Box(
+                Modifier
+                    .size(22.dp)
+                    .clip(CircleShape)
+                    .background(swatch)
+            )
+        } else {
+            Box(
+                Modifier
+                    .size(22.dp)
+                    .border(2.dp, theme.border, CircleShape)
+            )
+        }
 
         BasicTextField(
             value = value,

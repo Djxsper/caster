@@ -194,10 +194,15 @@ fun RosterEditor(modifier: Modifier = Modifier) {
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
             ) {
                 itemsIndexed(members, key = { _, member -> member.id }) { index, member ->
+                    // Where this person will actually sit, or -1 when they are
+                    // sitting out. Taken from the *active* list rather than from
+                    // the row's position, because that is what the games seat.
+                    val seat = rosterStore.activeMembers.indexOfFirst { it.id == member.id }
+
                     EditorRow(
                         // The seat colour the games will actually use, so the
                         // list doubles as a key to the rings and the potato.
-                        swatch = theme.playerColor(index),
+                        swatch = if (seat >= 0) theme.playerColor(seat) else theme.border,
                         value = member.name,
                         onValueChange = { rosterStore.rename(member.id, it) },
                         onMoveUp = if (index > 0) {

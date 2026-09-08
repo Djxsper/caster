@@ -182,6 +182,30 @@ class EntitlementTest {
     }
 
     @Test
+    fun `sitting somebody out moves everybody below them up a seat`() {
+        // What the editor's colour swatches depend on. The games seat from
+        // activeMembers, so a row's own position stops being its seat the moment
+        // anyone above it is switched off — and a swatch read from the row index
+        // would then name the wrong ring.
+        val store = RosterStore(FakePrefs())
+        store.honoursActiveFlags = true
+        val (first, second, third) = Triple(
+            store.members[0],
+            store.members[1],
+            store.members[2],
+        )
+
+        store.setActive(first.id, false)
+
+        assertEquals("nobody sits in a seat that was given up", -1, seatOf(store, first))
+        assertEquals("the second player takes the first seat", 0, seatOf(store, second))
+        assertEquals(1, seatOf(store, third))
+    }
+
+    private fun seatOf(store: RosterStore, member: com.jesperhaafkes.caster.domain.RosterMember) =
+        store.activeMembers.indexOfFirst { it.id == member.id }
+
+    @Test
     fun `who is sitting out survives a relaunch`() {
         val prefs = FakePrefs()
         val first = RosterStore(prefs)
