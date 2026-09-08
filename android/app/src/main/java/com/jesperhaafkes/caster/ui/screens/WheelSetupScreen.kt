@@ -24,6 +24,7 @@ import com.jesperhaafkes.caster.LocalAppEnvironment
 import com.jesperhaafkes.caster.LocalRosterStore
 import com.jesperhaafkes.caster.LocalWheelStore
 import com.jesperhaafkes.caster.domain.GameMode
+import com.jesperhaafkes.caster.domain.PlusPrompt
 import com.jesperhaafkes.caster.domain.Route
 import com.jesperhaafkes.caster.ui.components.AddRow
 import com.jesperhaafkes.caster.ui.components.CasterScreen
@@ -56,6 +57,7 @@ fun WheelSetupScreen(onBack: () -> Unit, onSpin: (Route) -> Unit) {
 
     var draftEntry by remember { mutableStateOf("") }
     var namePrompt by remember { mutableStateOf<WheelNamePrompt?>(null) }
+    var plusPrompt by remember { mutableStateOf<PlusPrompt?>(null) }
     var isDeleteConfirmShown by remember { mutableStateOf(false) }
     val addFocus = remember { FocusRequester() }
     var focusTicket by remember { mutableStateOf(0) }
@@ -110,7 +112,14 @@ fun WheelSetupScreen(onBack: () -> Unit, onSpin: (Route) -> Unit) {
                     }
                     EditorMenuDivider()
                     EditorMenuItem("New wheel") {
-                        namePrompt = WheelNamePrompt.NEW_WHEEL
+                        // Checked before the name prompt, not after: being asked
+                        // to name a wheel and only then told it cannot be made
+                        // is the rudest possible order to do this in.
+                        if (wheelStore.canCreateWheel) {
+                            namePrompt = WheelNamePrompt.NEW_WHEEL
+                        } else {
+                            plusPrompt = PlusPrompt.WHEEL_LIMIT
+                        }
                         dismiss()
                     }
                 }
@@ -121,7 +130,9 @@ fun WheelSetupScreen(onBack: () -> Unit, onSpin: (Route) -> Unit) {
                         dismiss()
                     }
                     EditorMenuItem("Duplicate wheel") {
-                        wheelStore.duplicateSelected()
+                        if (!wheelStore.duplicateSelected()) {
+                            plusPrompt = PlusPrompt.WHEEL_LIMIT
+                        }
                         dismiss()
                     }
                     EditorMenuItem(
@@ -210,9 +221,12 @@ fun WheelSetupScreen(onBack: () -> Unit, onSpin: (Route) -> Unit) {
             initialValue = "",
             onDismiss = { namePrompt = null },
             onSave = { name ->
-                wheelStore.createWheel(name)
+                if (wheelStore.createWheel(name) == null) {
+                    plusPrompt = PlusPrompt.WHEEL_LIMIT
+                } else {
+                    focusTicket += 1
+                }
                 namePrompt = null
-                focusTicket += 1
             },
         )
 
@@ -229,6 +243,10 @@ fun WheelSetupScreen(onBack: () -> Unit, onSpin: (Route) -> Unit) {
         )
 
         null -> Unit
+    }
+
+    plusPrompt?.let { prompt ->
+        PlusDialog(prompt = prompt, onDismiss = { plusPrompt = null })
     }
 
     if (isDeleteConfirmShown) {

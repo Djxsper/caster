@@ -19,30 +19,57 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jesperhaafkes.caster.ui.theme.CasterFontFamily
 import com.jesperhaafkes.caster.LocalAppEnvironment
+import com.jesperhaafkes.caster.LocalEntitlements
 import com.jesperhaafkes.caster.LocalGameState
 import com.jesperhaafkes.caster.domain.GameMode
 import com.jesperhaafkes.caster.domain.Route
+import com.jesperhaafkes.caster.ui.components.BarAction
 import com.jesperhaafkes.caster.ui.components.CasterScreen
 import com.jesperhaafkes.caster.ui.components.PrimaryButton
-import com.jesperhaafkes.caster.ui.components.tappable
+import com.jesperhaafkes.caster.ui.components.pressable
 import com.jesperhaafkes.caster.ui.haptics.FeedbackType
+import com.jesperhaafkes.caster.ui.theme.CasterType
 import com.jesperhaafkes.caster.ui.theme.LocalTheme
 
 @Composable
-fun ModeSelectScreen(onBack: () -> Unit, onAdvance: (Route) -> Unit) {
+fun ModeSelectScreen(
+    onBack: () -> Unit,
+    onAdvance: (Route) -> Unit,
+    onSettings: () -> Unit,
+) {
     val theme = LocalTheme.current
     val environment = LocalAppEnvironment.current
     val gameState = LocalGameState.current
+    val entitlements = LocalEntitlements.current
+
+    // The app's one and only interstitial placement: arriving back here from a
+    // game that has just been played.
+    //
+    // Both halves matter. consumeArming() proves this is a return from a game
+    // rather than the way in, and AdPacing decides whether this particular
+    // return has earned one — which for the first two sessions, the first five
+    // rounds, and anything within eight minutes of the last one, it has not.
+    // Nothing here can fire mid-round, because a game is not on screen when it
+    // runs.
+    LaunchedEffect(Unit) {
+        if (!environment.pacing.consumeArming()) return@LaunchedEffect
+        if (!environment.ads.isAvailable) return@LaunchedEffect
+        if (!environment.pacing.shouldShowInterstitial(entitlements.hasPlus)) {
+            return@LaunchedEffect
+        }
+        environment.pacing.recordInterstitialShown()
+        environment.ads.presentInterstitial { }
+    }
 
     /**
      * The label names the next screen, because it is not always the game — two
@@ -54,17 +81,20 @@ fun ModeSelectScreen(onBack: () -> Unit, onAdvance: (Route) -> Unit) {
         else -> "Play"
     }
 
-    CasterScreen(title = "Game Modes", onBack = onBack) {
+    CasterScreen(
+        title = "Game Modes",
+        onBack = onBack,
+        actions = {
+            BarAction(glyph = "⚙", contentDescription = "Settings", onClick = onSettings)
+        },
+    ) {
         Column(Modifier.fillMaxSize()) {
             Text(
                 text = "Pick One",
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 16.dp, bottom = 12.dp),
-                style = TextStyle(
-                    fontFamily = CasterFontFamily,
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Bold,
+                style = CasterType.title.copy(
                     color = theme.textPrimary,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 ),
@@ -119,42 +149,45 @@ private fun ModeCard(mode: GameMode, isSelected: Boolean, onSelect: () -> Unit) 
         animationSpec = tween(150),
         label = "card-fill",
     )
+    // The chip is what a selected row should feel like: the icon lights up with
+    // it rather than the border alone moving. A flat emoji on a flat card was
+    // the single most generic-looking thing on this screen.
+    val chipColor by animateColorAsState(
+        targetValue = if (isSelected) theme.accent.copy(alpha = 0.20f) else theme.border.copy(alpha = 0.35f),
+        animationSpec = tween(150),
+        label = "card-chip",
+    )
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
+            .clip(RoundedCornerShape(14.dp))
             .background(fillColor)
-            .border(1.dp, borderColor, RoundedCornerShape(10.dp))
-            .tappable(onClick = onSelect)
-            .padding(vertical = 12.dp, horizontal = 16.dp),
+            .border(1.dp, borderColor, RoundedCornerShape(14.dp))
+            .pressable(onClick = onSelect)
+            .padding(vertical = 12.dp, horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Box(Modifier.width(32.dp), contentAlignment = Alignment.Center) {
-            Text(text = mode.icon, style = TextStyle(fontFamily = CasterFontFamily, fontSize = 22.sp))
+        Box(
+            modifier = Modifier
+                .size(42.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(chipColor),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(text = mode.icon, style = TextStyle(fontFamily = CasterFontFamily, fontSize = 21.sp))
         }
 
         Column(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            Text(
-                text = mode.title,
-                style = TextStyle(
-                    fontFamily = CasterFontFamily,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = theme.textPrimary,
-                ),
-            )
-            Text(
-                text = mode.summary,
-                style = TextStyle(fontFamily = CasterFontFamily, fontSize = 12.sp, color = theme.textSecondary),
-            )
+            Text(text = mode.title, style = CasterType.rowTitle.copy(color = theme.textPrimary))
+            Text(text = mode.summary, style = CasterType.rowDetail.copy(color = theme.textSecondary))
         }
 
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(4.dp))
 
         SelectionMark(isSelected = isSelected)
     }

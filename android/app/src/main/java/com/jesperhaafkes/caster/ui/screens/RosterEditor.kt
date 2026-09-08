@@ -23,9 +23,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.jesperhaafkes.caster.LocalAppEnvironment
+import com.jesperhaafkes.caster.LocalEntitlements
 import com.jesperhaafkes.caster.LocalRosterStore
 import com.jesperhaafkes.caster.LocalWheelStore
 import com.jesperhaafkes.caster.domain.PlayerLimits
+import com.jesperhaafkes.caster.domain.PlusPrompt
 import com.jesperhaafkes.caster.ui.components.AddRow
 import com.jesperhaafkes.caster.ui.components.BarAction
 import com.jesperhaafkes.caster.ui.components.BarTextAction
@@ -58,9 +60,11 @@ fun RosterEditor(modifier: Modifier = Modifier) {
     val environment = LocalAppEnvironment.current
     val rosterStore = LocalRosterStore.current
     val wheelStore = LocalWheelStore.current
+    val entitlements = LocalEntitlements.current
 
     var draftName by remember { mutableStateOf("") }
     var namePrompt by remember { mutableStateOf<NamePrompt?>(null) }
+    var plusPrompt by remember { mutableStateOf<PlusPrompt?>(null) }
     var isDeleteConfirmShown by remember { mutableStateOf(false) }
     val addFocus = remember { FocusRequester() }
     var focusTicket by remember { mutableStateOf(0) }
@@ -115,7 +119,14 @@ fun RosterEditor(modifier: Modifier = Modifier) {
                 }
                 EditorMenuDivider()
                 EditorMenuItem("New group") {
-                    namePrompt = NamePrompt.NEW_ROSTER
+                    // Checked before the name prompt, not after: being asked to
+                    // name a group and only then told it cannot be made is the
+                    // rudest possible order to do this in.
+                    if (rosterStore.canCreateRoster) {
+                        namePrompt = NamePrompt.NEW_ROSTER
+                    } else {
+                        plusPrompt = PlusPrompt.ROSTER_LIMIT
+                    }
                     dismiss()
                 }
             }
@@ -126,7 +137,9 @@ fun RosterEditor(modifier: Modifier = Modifier) {
                     dismiss()
                 }
                 EditorMenuItem("Duplicate group") {
-                    rosterStore.duplicateSelected()
+                    if (!rosterStore.duplicateSelected()) {
+                        plusPrompt = PlusPrompt.ROSTER_LIMIT
+                    }
                     dismiss()
                 }
                 EditorMenuItem(
@@ -198,6 +211,15 @@ fun RosterEditor(modifier: Modifier = Modifier) {
                             null
                         },
                         onDelete = { rosterStore.remove(member.id) },
+                        isActive = member.isActive,
+                        onToggleActive = {
+                            if (entitlements.hasActiveMemberToggle) {
+                                environment.hapticEngine.playFeedback(FeedbackType.LIGHT)
+                                rosterStore.setActive(member.id, !member.isActive)
+                            } else {
+                                plusPrompt = PlusPrompt.ACTIVE_MEMBERS
+                            }
+                        },
                     )
                 }
             }
@@ -212,9 +234,12 @@ fun RosterEditor(modifier: Modifier = Modifier) {
             initialValue = "",
             onDismiss = { namePrompt = null },
             onSave = { name ->
-                rosterStore.createRoster(name)
+                if (rosterStore.createRoster(name) == null) {
+                    plusPrompt = PlusPrompt.ROSTER_LIMIT
+                } else {
+                    focusTicket += 1
+                }
                 namePrompt = null
-                focusTicket += 1
             },
         )
 
@@ -231,6 +256,10 @@ fun RosterEditor(modifier: Modifier = Modifier) {
         )
 
         null -> Unit
+    }
+
+    plusPrompt?.let { prompt ->
+        PlusDialog(prompt = prompt, onDismiss = { plusPrompt = null })
     }
 
     if (isDeleteConfirmShown) {

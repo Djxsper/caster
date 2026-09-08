@@ -14,5 +14,7 @@ sealed interface Route {
     /** The pinwheel's entry list. */
     data object WheelSetup : Route
 
+    data object Settings : Route
+
     data class Game(val mode: GameMode) : Route
 }

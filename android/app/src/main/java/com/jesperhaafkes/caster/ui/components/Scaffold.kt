@@ -24,13 +24,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.jesperhaafkes.caster.ui.theme.CasterFontFamily
+import com.jesperhaafkes.caster.ui.theme.CasterType
 import com.jesperhaafkes.caster.ui.theme.LocalTheme
 
 /**
@@ -59,7 +56,7 @@ fun CasterScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(52.dp)
+                .height(56.dp)
                 .padding(horizontal = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -72,10 +69,7 @@ fun CasterScreen(
             Text(
                 text = title,
                 modifier = Modifier.weight(1f),
-                style = TextStyle(
-                    fontFamily = CasterFontFamily,
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.SemiBold,
+                style = CasterType.navTitle.copy(
                     color = theme.textPrimary,
                     textAlign = TextAlign.Center,
                 ),
@@ -114,7 +108,7 @@ private fun BackArrow(onBack: () -> Unit) {
         modifier = Modifier
             .size(44.dp)
             .clip(CircleShape)
-            .tappable(onClick = onBack),
+            .pressable(pressedScale = 0.88f, onClick = onBack),
         contentAlignment = Alignment.Center,
     ) {
         // An arrow, not iOS's bare chevron. Drawn rather than pulled from
@@ -164,12 +158,12 @@ fun BarAction(
         modifier = Modifier
             .size(44.dp)
             .clip(CircleShape)
-            .tappable(onClick = onClick),
+            .pressable(pressedScale = 0.88f, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = glyph,
-            style = TextStyle(fontFamily = CasterFontFamily, fontSize = 19.sp, color = tint ?: theme.accent),
+            style = CasterType.subtitle.copy(color = tint ?: theme.accent),
         )
     }
 }

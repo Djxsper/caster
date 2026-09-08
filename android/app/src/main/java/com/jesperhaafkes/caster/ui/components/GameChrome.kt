@@ -10,7 +10,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.systemGestureExclusion
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,8 +30,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -59,6 +61,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jesperhaafkes.caster.ui.theme.CasterFontFamily
+import com.jesperhaafkes.caster.ui.theme.CasterType
 import com.jesperhaafkes.caster.touch.TouchArena
 import com.jesperhaafkes.caster.ui.theme.LocalTheme
 import kotlin.math.roundToInt
@@ -106,21 +109,15 @@ fun PrimaryButton(
         modifier = modifier
             .fillMaxWidth()
             .alpha(if (isEnabled) 1f else 0.45f)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(14.dp))
             .background(tint ?: theme.accent)
-            .tappable(enabled = isEnabled, onClick = onClick)
+            .pressable(enabled = isEnabled, onClick = onClick)
             .padding(vertical = 16.dp, horizontal = 16.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = title,
-            style = TextStyle(
-                fontFamily = CasterFontFamily,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                textAlign = TextAlign.Center,
-            ),
+            style = CasterType.button.copy(color = Color.White, textAlign = TextAlign.Center),
         )
     }
 }
@@ -136,19 +133,16 @@ fun SecondaryButton(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(14.dp))
             .background(theme.surfaceRaised)
-            .border(1.dp, theme.border, RoundedCornerShape(12.dp))
-            .tappable(onClick = onClick)
+            .border(1.dp, theme.border, RoundedCornerShape(14.dp))
+            .pressable(onClick = onClick)
             .padding(vertical = 14.dp, horizontal = 16.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = title,
-            style = TextStyle(
-                fontFamily = CasterFontFamily,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold,
+            style = CasterType.buttonQuiet.copy(
                 color = theme.textPrimary,
                 textAlign = TextAlign.Center,
             ),
@@ -174,13 +168,7 @@ fun StatusLine(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp),
-        style = TextStyle(
-            fontFamily = CasterFontFamily,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Medium,
-            color = color,
-            textAlign = TextAlign.Center,
-        ),
+        style = CasterType.status.copy(color = color, textAlign = TextAlign.Center),
         maxLines = 2,
         overflow = TextOverflow.Ellipsis,
     )
@@ -533,6 +521,47 @@ fun ResultBanner(
  */
 fun Modifier.tappable(enabled: Boolean = true, onClick: () -> Unit): Modifier =
     this.clickable(enabled = enabled, onClick = onClick)
+
+/**
+ * [tappable], plus the thing that makes a button feel like a button: it gives
+ * under the finger and springs back.
+ *
+ * This is the single largest reason the Compose build read as flatter than the
+ * SwiftUI one. On iOS a plain `Button` shrinks slightly while held — it is free,
+ * it is everywhere, and it is most of what "responsive" means to a hand. Compose
+ * ships a ripple and nothing else, so a press here changed a colour and moved
+ * nothing, which reads as a web page rather than an app.
+ *
+ * The scale is applied *outside* the click so the ripple still fills the
+ * untransformed bounds, and the spring is deliberately stiff: this has to land
+ * inside the same frame budget as the tap it is acknowledging, or it stops
+ * being feedback and becomes lag.
+ */
+@Composable
+fun Modifier.pressable(
+    enabled: Boolean = true,
+    pressedScale: Float = 0.96f,
+    onClick: () -> Unit,
+): Modifier {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed && enabled) pressedScale else 1f,
+        animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessHigh),
+        label = "press-scale",
+    )
+    return this
+        .graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+        }
+        .clickable(
+            interactionSource = interactionSource,
+            indication = LocalIndication.current,
+            enabled = enabled,
+            onClick = onClick,
+        )
+}
 
 /**
  * A tap with no ripple, no click sound and no button semantics.

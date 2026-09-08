@@ -70,6 +70,18 @@ class WheelStore(private val prefs: SharedPreferences) {
     val canDeleteWheel: Boolean
         get() = _wheels.size > 1
 
+    /**
+     * How many wheels may be saved. Set from [EntitlementStore] at launch,
+     * raised to [Int.MAX_VALUE] by Plus, and applied only to *creating* a
+     * wheel. An existing library is never trimmed to fit — somebody who drops
+     * back to the free tier keeps everything they made, they just cannot add to
+     * it.
+     */
+    var capacity: Int by mutableStateOf(FreeLimits.SAVED_WHEELS)
+
+    val canCreateWheel: Boolean
+        get() = _wheels.size < capacity
+
     // endregion
 
     // region Entries
@@ -145,7 +157,9 @@ class WheelStore(private val prefs: SharedPreferences) {
         save()
     }
 
-    fun createWheel(named: String): UUID {
+    /** @return the new wheel's id, or null when the free cap refused it. */
+    fun createWheel(named: String): UUID? {
+        if (!canCreateWheel) return null
         val trimmed = named.trim()
         val wheel = SavedWheel(name = trimmed.ifEmpty { nextDefaultName() })
         _wheels.add(wheel)
@@ -164,8 +178,10 @@ class WheelStore(private val prefs: SharedPreferences) {
      * Copies the wheel in play and switches to the copy. Entry ids are minted
      * fresh so the two wheels never share identity.
      */
-    fun duplicateSelected() {
-        val wheel = selectedWheel ?: return
+    /** @return whether the copy was made. The free cap can refuse it. */
+    fun duplicateSelected(): Boolean {
+        if (!canCreateWheel) return false
+        val wheel = selectedWheel ?: return false
         val copy = SavedWheel(
             name = "${wheel.name} copy",
             entries = wheel.entries.map { WheelEntry(label = it.label) },
@@ -173,6 +189,7 @@ class WheelStore(private val prefs: SharedPreferences) {
         _wheels.add(copy)
         selectedID = copy.id
         save()
+        return true
     }
 
     fun deleteSelected() {

@@ -8,7 +8,7 @@
 
 Pass-the-phone party games for settling who goes first, who buys the next round,
 and who is doing the washing up. One device, everybody's fingers on the glass,
-no accounts and no network.
+no accounts, and nothing you need a signal to play.
 
 [![Build](https://github.com/Djxsper/caster/actions/workflows/ios-simulator.yml/badge.svg)](https://github.com/Djxsper/caster/actions/workflows/ios-simulator.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -50,18 +50,28 @@ no accounts and no network.
 Nothing here does. All six games, every mode, as many players and wheel entries
 as you like, no ads inside a round — that is the app, and it stays the app.
 
-The App Store build adds **Caster Plus**, one payment and not a subscription,
-which raises the saved-wheel and saved-group caps, lets you sit somebody out
-without deleting them, adds four palettes, and turns off the one interstitial
-the free build shows on the way back from a game. The rules that ad obeys are
-written down in [`shared/monetization/offering.json`](shared/monetization/offering.json)
-and proved in [`AdPacingTests`](CasterTests/AdPacingTests.swift): never mid-round,
-never in the first two sessions, never within eight minutes of the last one,
-never more than twice in a sitting.
+The store builds add **Caster Plus**, one payment and not a subscription, which
+raises the saved-wheel and saved-group caps, lets you sit somebody out without
+deleting them, adds four palettes, and turns off the one interstitial the free
+build shows on the way back from a game.
 
-Sideloaded builds cannot complete a StoreKit purchase, so this one is free in
-every sense. Anyone who was using the app before the caps existed keeps their
-libraries unlimited for good.
+Both apps read the same deal out of
+[`shared/monetization/offering.json`](shared/monetization/offering.json), and both
+test suites fail if their constants drift from it —
+[`AdPacingTests`](CasterTests/AdPacingTests.swift) and
+[`AdPacingTest`](android/app/src/test/java/com/jesperhaafkes/caster/AdPacingTest.kt).
+The ad rules: never mid-round, never in the first two sessions, never before the
+fifth completed round, never within eight minutes of the last one, never more
+than twice in a sitting, and never in the first twenty seconds after launch.
+
+The paywall is held to the same file. Every line it claims must be `true` under
+`plusBenefits`, which is why `soundPacks` and `persistentScoreboard` sit there as
+`false` — they are planned, not built, and the parity tests on both platforms
+fail if either is advertised before it works.
+
+Sideloaded and locally-built copies cannot complete a purchase on either store,
+so those are free in every sense. Anyone who was using the app before the caps
+existed keeps their libraries unlimited for good.
 
 ---
 
@@ -118,8 +128,9 @@ free Apple ID at install time. [AltStore](https://altstore.io) and
 ## Android
 
 There is an Android version, in [`android/`](android). It is a second native app
-— Kotlin with Jetpack Compose — not a wrapper or a port of the binary, and it is
-not on Google Play yet.
+— Kotlin with Jetpack Compose — not a wrapper or a port of the binary. It is not
+on Google Play yet, and it is the one going there first: the iOS build follows
+once this one has an audience.
 
 The two apps share no code, and that is not laziness. Caster's interface is
 SwiftUI, its multi-touch layer is UIKit, its buzzes are Core Haptics and its tones
@@ -155,6 +166,12 @@ test target, but its tuning constants have not been hoisted out of the screens
 the way Android's were, so it reads the commercial fixture and not yet this one.
 See [the parity notes](shared/parity/README.md).
 
+The commercial half of that arrangement is
+[`shared/monetization/offering.json`](shared/monetization/offering.json), and
+**both** apps do read that one — free limits, ad pacing, the product ids, and
+which paid benefits are real. A limit loosened on one platform now fails the
+other platform's build.
+
 Shipping it is written up in [`android/RELEASING.md`](android/RELEASING.md).
 
 ---
@@ -162,10 +179,16 @@ Shipping it is written up in [`android/RELEASING.md`](android/RELEASING.md).
 ## Building and hacking on it
 
 No package manager, no dependencies, no generated files — clone and open. That
-is still true of this repository, and is meant to stay true: the ad SDK the App
+is still true of the Xcode project, and is meant to stay true: the ad SDK the App
 Store build links is behind an `ADS_ENABLED` build flag *and* a `canImport`
 check, so a plain clone resolves nothing and shows no ads. See
 [`AdPresenter.swift`](Caster/Interface/Ads/AdPresenter.swift).
+
+The Android module is a Gradle project and always had dependencies — Compose,
+and now Play Billing, which is the one piece that cannot be faked because the
+store is the other half of it. It links no ad SDK either:
+[`AdPresenterFactory`](android/app/src/main/java/com/jesperhaafkes/caster/ui/ads/AdPresenter.kt)
+returns a stand-in in debug builds and a no-op in release ones.
 
 ```
 Caster/
@@ -231,6 +254,20 @@ Pushing a `v*` tag additionally publishes a GitHub Release with the IPA attached
 git tag v1.0.0
 git push origin v1.0.0
 ```
+
+Android has its own job,
+[`android.yml`](.github/workflows/android.yml), on a Linux runner because nothing
+there needs Xcode: unit tests, lint, and a debug APK as an artifact. Its suite
+covers the same commercial ground —
+[`AdPacingTest`](android/app/src/test/java/com/jesperhaafkes/caster/AdPacingTest.kt),
+[`EntitlementTest`](android/app/src/test/java/com/jesperhaafkes/caster/EntitlementTest.kt)
+and
+[`OfferingParityTest`](android/app/src/test/java/com/jesperhaafkes/caster/OfferingParityTest.kt)
+— against a fake `SharedPreferences`, so the caps, the grandfather clause and
+the ad rules are all provable without an emulator or a Play Console. The debug
+APK carries the same three affordances the test IPA does: a stand-in
+interstitial, a **Test build** section in Settings that pretends Plus is bought,
+and a TEST BUILD badge, all behind `BuildConfig.DEBUG`.
 
 Note that CI can only prove the app *compiles* and that each screen renders. The
 simulator has no real multi-touch, so the finger tracking, reaction timing and

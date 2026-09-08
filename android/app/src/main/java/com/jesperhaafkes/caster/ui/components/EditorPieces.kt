@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -34,6 +36,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -47,6 +50,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jesperhaafkes.caster.ui.theme.CasterFontFamily
+import com.jesperhaafkes.caster.ui.theme.CasterType
 import com.jesperhaafkes.caster.ui.theme.LocalTheme
 
 /**
@@ -80,10 +84,10 @@ fun PickerHeader(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(14.dp))
                 .background(theme.surfaceRaised)
-                .border(1.dp, theme.border, RoundedCornerShape(12.dp))
-                .tappable { isMenuOpen = true }
+                .border(1.dp, theme.border, RoundedCornerShape(14.dp))
+                .pressable { isMenuOpen = true }
                 .padding(vertical = 12.dp, horizontal = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -96,18 +100,13 @@ fun PickerHeader(
             ) {
                 Text(
                     text = title,
-                    style = TextStyle(
-                        fontFamily = CasterFontFamily,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = theme.textPrimary,
-                    ),
+                    style = CasterType.rowTitle.copy(color = theme.textPrimary),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = subtitle,
-                    style = TextStyle(fontFamily = CasterFontFamily, fontSize = 12.sp, color = theme.textSecondary),
+                    style = CasterType.rowDetail.copy(color = theme.textSecondary),
                 )
             }
 
@@ -204,12 +203,14 @@ fun AddRow(
     onCommit: () -> Unit,
 ) {
     val theme = LocalTheme.current
+    var isFocused by remember { mutableStateOf(false) }
+
     Row(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        FieldBox(modifier = Modifier.weight(1f)) {
+        FieldBox(modifier = Modifier.weight(1f), isFocused = isFocused) {
             BasicTextField(
                 value = value,
                 onValueChange = onValueChange,
@@ -217,8 +218,9 @@ fun AddRow(
                 singleLine = true,
                 modifier = Modifier
                     .fillMaxWidth()
+                    .onFocusChanged { isFocused = it.isFocused }
                     .focusRequester(focusRequester),
-                textStyle = TextStyle(fontFamily = CasterFontFamily, fontSize = 16.sp, color = theme.textPrimary),
+                textStyle = CasterType.field.copy(color = theme.textPrimary),
                 cursorBrush = SolidColor(theme.accent),
                 keyboardOptions = NameKeyboard,
                 keyboardActions = KeyboardActions(onDone = { onCommit() }),
@@ -226,7 +228,7 @@ fun AddRow(
                     if (value.isEmpty()) {
                         Text(
                             text = placeholder,
-                            style = TextStyle(fontFamily = CasterFontFamily, fontSize = 16.sp, color = theme.textSecondary),
+                            style = CasterType.field.copy(color = theme.textSecondary),
                         )
                     }
                     inner()
@@ -236,11 +238,11 @@ fun AddRow(
 
         Box(
             modifier = Modifier
-                .size(46.dp)
+                .size(48.dp)
                 .alpha(if (canCommit) 1f else 0.45f)
-                .clip(RoundedCornerShape(10.dp))
+                .clip(RoundedCornerShape(12.dp))
                 .background(theme.accent)
-                .tappable(enabled = canCommit, onClick = onCommit),
+                .pressable(enabled = canCommit, onClick = onCommit),
             contentAlignment = Alignment.Center,
         ) {
             Canvas(Modifier.size(18.dp)) {
@@ -264,14 +266,31 @@ fun AddRow(
     }
 }
 
+/**
+ * A text field's frame, with a ring that lights up while it has focus.
+ *
+ * Compose gives a BasicTextField no focus affordance at all beyond the caret,
+ * which on a field that is already bordered reads as nothing having happened.
+ * SwiftUI's own fields tint on focus; this is the same signal, and on the add
+ * row it is what tells you the keyboard is going to type into *that* box.
+ */
 @Composable
-private fun FieldBox(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+private fun FieldBox(
+    modifier: Modifier = Modifier,
+    isFocused: Boolean = false,
+    content: @Composable () -> Unit,
+) {
     val theme = LocalTheme.current
+    val borderColor by animateColorAsState(
+        targetValue = if (isFocused) theme.accent else theme.border,
+        animationSpec = tween(150),
+        label = "field-border",
+    )
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
+            .clip(RoundedCornerShape(12.dp))
             .background(theme.surfaceRaised)
-            .border(1.dp, theme.border, RoundedCornerShape(10.dp))
+            .border(if (isFocused) 1.5.dp else 1.dp, borderColor, RoundedCornerShape(12.dp))
             .padding(vertical = 12.dp, horizontal = 14.dp),
         contentAlignment = Alignment.CenterStart,
         content = { content() },
@@ -294,9 +313,15 @@ fun EditorRow(
     onMoveDown: (() -> Unit)?,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Whether this person is playing. Only meaningful with [onToggleActive]. */
+    isActive: Boolean = true,
+    /** Null in the wheel editor, which has nobody to sit out. */
+    onToggleActive: (() -> Unit)? = null,
 ) {
     val theme = LocalTheme.current
     val focusManager = LocalFocusManager.current
+    val isSeated = onToggleActive == null || isActive
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -308,6 +333,7 @@ fun EditorRow(
             Modifier
                 .size(22.dp)
                 .clip(CircleShape)
+                .alpha(if (isSeated) 1f else 0.3f)
                 .background(swatch)
         )
 
@@ -316,16 +342,72 @@ fun EditorRow(
             onValueChange = onValueChange,
             singleLine = true,
             modifier = Modifier.weight(1f),
-            textStyle = TextStyle(fontFamily = CasterFontFamily, fontSize = 16.sp, color = theme.textPrimary),
+            textStyle = CasterType.field.copy(
+                // Dimmed when they are sitting out, so the list reads at a
+                // glance as who is actually playing.
+                color = if (isSeated) theme.textPrimary else theme.textSecondary,
+            ),
             cursorBrush = SolidColor(theme.accent),
             keyboardOptions = NameKeyboard,
             keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
         )
 
         Spacer(Modifier.width(2.dp))
+        if (onToggleActive != null) {
+            ActiveToggle(isSeated = isSeated, onClick = onToggleActive)
+        }
         ArrowButton(pointsUp = true, enabled = onMoveUp != null) { onMoveUp?.invoke() }
         ArrowButton(pointsUp = false, enabled = onMoveDown != null) { onMoveDown?.invoke() }
         DeleteButton(onDelete)
+    }
+}
+
+/**
+ * Turn somebody off for tonight without deleting them and retyping them next
+ * week.
+ *
+ * Shown to everyone rather than hidden behind Plus. A control nobody can see is
+ * a feature nobody knows they are missing, and tapping it explains itself —
+ * which is a fairer way to sell something than a list of bullets.
+ */
+@Composable
+private fun ActiveToggle(isSeated: Boolean, onClick: () -> Unit) {
+    val theme = LocalTheme.current
+    Box(
+        modifier = Modifier
+            .size(30.dp)
+            .clip(CircleShape)
+            .tappable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(Modifier.size(18.dp)) {
+            val centre = Offset(size.width / 2f, size.height / 2f)
+            val radius = size.minDimension / 2f - 1.dp.toPx()
+            if (isSeated) {
+                drawCircle(theme.accent, radius = radius, center = centre)
+                val tick = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(centre.x - radius * 0.42f, centre.y)
+                    lineTo(centre.x - radius * 0.10f, centre.y + radius * 0.34f)
+                    lineTo(centre.x + radius * 0.46f, centre.y - radius * 0.34f)
+                }
+                drawPath(
+                    path = tick,
+                    color = Color.White,
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(
+                        width = 2.dp.toPx(),
+                        cap = StrokeCap.Round,
+                        join = androidx.compose.ui.graphics.StrokeJoin.Round,
+                    ),
+                )
+            } else {
+                drawCircle(
+                    color = theme.border,
+                    radius = radius,
+                    center = centre,
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(1.6.dp.toPx()),
+                )
+            }
+        }
     }
 }
 
@@ -402,10 +484,7 @@ fun EditorEmptyState(glyph: String, message: String, modifier: Modifier = Modifi
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(text = glyph, style = TextStyle(fontFamily = CasterFontFamily, fontSize = 40.sp))
-        Text(
-            text = message,
-            style = TextStyle(fontFamily = CasterFontFamily, fontSize = 15.sp, color = theme.textSecondary),
-        )
+        Text(text = message, style = CasterType.status.copy(color = theme.textSecondary))
     }
 }
 
@@ -562,18 +641,13 @@ fun BarTextAction(label: String, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
-            .tappable(onClick = onClick)
+            .pressable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = label,
-            style = TextStyle(
-                fontFamily = CasterFontFamily,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = theme.accent,
-            ),
+            style = CasterType.rowTitle.copy(color = theme.accent),
         )
     }
 }

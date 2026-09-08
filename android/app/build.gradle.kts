@@ -60,6 +60,10 @@ android {
 
     buildFeatures {
         compose = true
+        // AdPresenterFactory and the Settings debug section branch on
+        // BuildConfig.DEBUG. Kotlin has no `#if DEBUG`, so this flag is how the
+        // test affordances stay out of a release build.
+        buildConfig = true
     }
 }
 
@@ -81,6 +85,11 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+
+    // Play Billing, used directly. One non-consumable product and no server to
+    // reconcile against is exactly the case a purchase SDK is not worth a
+    // dependency for — see BillingService.
+    implementation(libs.billing)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 

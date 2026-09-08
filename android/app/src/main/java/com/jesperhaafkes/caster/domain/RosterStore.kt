@@ -16,6 +16,13 @@ import java.util.UUID
 data class RosterMember(
     val id: UUID = UUID.randomUUID(),
     val name: String,
+    /**
+     * Whether this person is at the table right now. Someone who has gone home
+     * early stops being picked without being deleted, so the group survives to
+     * next week intact. Obeyed only when [RosterStore.honoursActiveFlags] is
+     * set, which is what makes it a Plus feature.
+     */
+    val isActive: Boolean = true,
 )
 
 /**
@@ -63,11 +70,25 @@ class RosterStore(private val prefs: SharedPreferences) {
     val members: List<RosterMember>
         get() = selectedRoster?.members ?: emptyList()
 
+    /**
+     * Whether the [RosterMember.isActive] flags are obeyed. Off unless Plus is
+     * held, so a refund can never leave somebody with a group that quietly
+     * excludes half the table — the flags stay on disk, they just stop
+     * applying.
+     *
+     * Set from [EntitlementStore] at launch, exactly like [capacity].
+     */
+    var honoursActiveFlags: Boolean by mutableStateOf(false)
+
+    /** Who is actually at the table. Every game reads this, not [members]. */
+    val activeMembers: List<RosterMember>
+        get() = if (honoursActiveFlags) members.filter { it.isActive } else members
+
     val names: List<String>
-        get() = members.map { it.name }
+        get() = activeMembers.map { it.name }
 
     val canPlay: Boolean
-        get() = members.size >= PlayerLimits.MINIMUM
+        get() = activeMembers.size >= PlayerLimits.MINIMUM
 
     /**
      * Unlike the wheel, a roster is bounded: the games address people by seat
@@ -80,6 +101,17 @@ class RosterStore(private val prefs: SharedPreferences) {
     /** The last roster cannot be deleted — there always has to be one to edit. */
     val canDeleteRoster: Boolean
         get() = _rosters.size > 1
+
+    /**
+     * How many groups may be saved. The twin of [WheelStore.capacity]: set from
+     * [EntitlementStore] at launch, raised to [Int.MAX_VALUE] by Plus, and
+     * applied only to *creating* a group. An existing library is never trimmed
+     * to fit.
+     */
+    var capacity: Int by mutableStateOf(FreeLimits.SAVED_ROSTERS)
+
+    val canCreateRoster: Boolean
+        get() = _rosters.size < capacity
 
     // endregion
 
@@ -105,6 +137,17 @@ class RosterStore(private val prefs: SharedPreferences) {
             } else {
                 members[index] = members[index].copy(name = trimmed)
             }
+            roster.copy(members = members)
+        }
+    }
+
+    /** Sits somebody out, or brings them back. Never deletes. */
+    fun setActive(id: UUID, isActive: Boolean) {
+        updateSelected { roster ->
+            val index = roster.members.indexOfFirst { it.id == id }
+            if (index < 0) return@updateSelected roster
+            val members = roster.members.toMutableList()
+            members[index] = members[index].copy(isActive = isActive)
             roster.copy(members = members)
         }
     }
@@ -159,7 +202,9 @@ class RosterStore(private val prefs: SharedPreferences) {
         save()
     }
 
-    fun createRoster(named: String): UUID {
+    /** @return the new group's id, or null when the free cap refused it. */
+    fun createRoster(named: String): UUID? {
+        if (!canCreateRoster) return null
         val trimmed = named.trim()
         val roster = SavedRoster(name = trimmed.ifEmpty { nextDefaultName() })
         _rosters.add(roster)
@@ -178,15 +223,18 @@ class RosterStore(private val prefs: SharedPreferences) {
      * Copies the roster at the table and switches to the copy. Member ids are
      * minted fresh so the two rosters never share identity.
      */
-    fun duplicateSelected() {
-        val roster = selectedRoster ?: return
+    /** @return whether the copy was made. The free cap can refuse it. */
+    fun duplicateSelected(): Boolean {
+        if (!canCreateRoster) return false
+        val roster = selectedRoster ?: return false
         val copy = SavedRoster(
             name = "${roster.name} copy",
-            members = roster.members.map { RosterMember(name = it.name) },
+            members = roster.members.map { RosterMember(name = it.name, isActive = it.isActive) },
         )
         _rosters.add(copy)
         selectedID = copy.id
         save()
+        return true
     }
 
     fun deleteSelected() {
@@ -248,6 +296,9 @@ class RosterStore(private val prefs: SharedPreferences) {
                         RosterMember(
                             id = UUID.fromString(member.getString("id")),
                             name = member.getString("name"),
+                            // Absent in everything written before the toggle
+                            // existed, and everyone in those groups was playing.
+                            isActive = member.optBoolean("isActive", true),
                         )
                     },
                 )
@@ -265,6 +316,7 @@ class RosterStore(private val prefs: SharedPreferences) {
                     JSONObject()
                         .put("id", member.id.toString())
                         .put("name", member.name)
+                        .put("isActive", member.isActive)
                 )
             }
             array.put(
