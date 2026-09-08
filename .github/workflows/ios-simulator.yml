@@ -95,15 +95,38 @@ jobs:
       # the runner image happens to ship.
       #
       # The execution-time allowances exist because a hung test is otherwise
-      # indistinguishable from a slow one. The first run of this step reported
-      # three suites passing in under two seconds, then sat on a StoreKit call
-      # for thirty-four minutes until the job timeout killed it, having said
-      # nothing about which test it was in. Now a stuck test fails in a minute
-      # and names itself.
+      # indistinguishable from a slow one. This step once reported three suites
+      # passing in under two seconds and then sat on a StoreKit call for
+      # thirty-four minutes until the job timeout killed it, having said nothing
+      # about which test it was in.
+      #
+      # They were added once before and did not work, for a dull reason worth
+      # recording: the edit that added them collapsed this command onto a single
+      # line and dropped the flags on the way, so the comment described a
+      # timeout that was never passed to xcodebuild. Check the command, not the
+      # comment.
+      #
+      # `timeout-minutes` on the step is the belt to that pair of braces. If a
+      # test hangs in a way xcodebuild's own watchdog cannot interrupt, this
+      # fails the step in eight minutes instead of letting it consume the job's
+      # whole forty-minute budget and end up cancelled, which reports nothing at
+      # all.
       - name: Run unit tests
+        timeout-minutes: 8
         run: |
           set -o pipefail
-          xcodebuild test             -project "$PROJECT"             -scheme "$SCHEME"             -configuration Debug             -destination "id=${{ steps.sim.outputs.udid }}"             -derivedDataPath build             CODE_SIGNING_ALLOWED=NO             COMPILER_INDEX_STORE_ENABLE=NO             2>&1 | tee test.log
+          xcodebuild test \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration Debug \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -derivedDataPath build \
+            -test-timeouts-enabled YES \
+            -default-test-execution-time-allowance 60 \
+            -maximum-test-execution-time-allowance 120 \
+            CODE_SIGNING_ALLOWED=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            2>&1 | tee test.log
 
       - name: Test results
         if: always()

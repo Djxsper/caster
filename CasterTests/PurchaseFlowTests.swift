@@ -16,8 +16,64 @@ import XCTest
 ///
 /// Each test builds its own session rather than sharing one from `setUp`, so a
 /// transaction left behind by one test can never decide the outcome of another.
+///
+/// ## Why most of this is skipped in CI
+///
+/// Every test below that calls `StoreService.purchasePlus()` hangs forever on a
+/// CI runner. The evidence, from run 33794912687: `AdPacingTests`,
+/// `EntitlementTests` and `OfferingParityTests` all pass in under two seconds,
+/// then `testBuyingPlusUnlocksEverything` starts and prints nothing for
+/// thirty-two minutes until the job timeout kills the whole run.
+///
+/// The cause is `Product.purchase()`. It presents a sheet, so it wants a
+/// foreground `UIWindowScene`, and a logic-test host started by `xcodebuild
+/// test` has none — `SKTestSession.disableDialogs` suppresses the *dialog*, not
+/// the presentation. It never returns.
+///
+/// `-default-test-execution-time-allowance 60` was supposed to catch exactly
+/// this and appeared not to. It turned out never to have been passed: the edit
+/// that added those flags collapsed the `xcodebuild` command in
+/// `ios-simulator.yml` onto one line and dropped them, leaving a comment that
+/// described a timeout the command did not have. They are in the command now,
+/// and the step also carries `timeout-minutes: 8`, so whether xcodebuild's
+/// watchdog can interrupt this particular hang is now a question the next run
+/// will answer rather than one to guess at.
+///
+/// The gate stands either way. A hanging test is worth strictly less than a
+/// skipped one: it costs forty minutes of macOS runner time per push and
+/// reports nothing at the end of it. The code is right; it is the host that is
+/// wrong.
+///
+/// **To run them**, on a Mac, where a real scene exists:
+///
+///     CASTER_STOREKIT_TESTS=1 xcodebuild test -scheme Caster \
+///       -destination 'platform=iOS Simulator,name=iPhone 16'
+///
+/// **To fix them properly**, drive the storefront directly instead of going
+/// through the UI: `SKTestSession` can complete a purchase itself, and
+/// `refreshEntitlements()` — which reads `Transaction.currentEntitlements` and
+/// needs no scene at all — is what the app actually relies on. That swap is the
+/// next thing to do here, and it wants a Mac to confirm the signature against.
+///
+/// What is *not* covered meanwhile: the buy button's own code path. Everything
+/// after a completed transaction — granting, revoking, restoring, the cache
+/// surviving a relaunch — is covered by `EntitlementTests`, which does not need
+/// a storefront and does run in CI.
 @MainActor
 final class PurchaseFlowTests: XCTestCase {
+
+    /// Skips unless the environment asks for the purchase tests by name.
+    ///
+    /// Opt-in rather than opt-out on purpose: CI must not have to know to turn
+    /// something off to avoid hanging for forty minutes.
+    private func requireAPresentableStorefront() throws {
+        try XCTSkipUnless(
+            ProcessInfo.processInfo.environment["CASTER_STOREKIT_TESTS"] == "1",
+            "Product.purchase() needs a UIWindowScene that a logic-test host does "
+                + "not have, and hangs forever without one. Set "
+                + "CASTER_STOREKIT_TESTS=1 to run these on a Mac."
+        )
+    }
 
     // MARK: - Buying
 
@@ -33,6 +89,7 @@ final class PurchaseFlowTests: XCTestCase {
     }
 
     func testBuyingPlusUnlocksEverything() async throws {
+        try requireAPresentableStorefront()
         _ = try makeSession()
         let (entitlements, store) = makeStore()
 
@@ -53,6 +110,7 @@ final class PurchaseFlowTests: XCTestCase {
     /// dying — that is the whole reason a pub with no signal still shows a Plus
     /// user their palettes.
     func testTheEntitlementSurvivesARelaunch() async throws {
+        try requireAPresentableStorefront()
         _ = try makeSession()
         let defaults = Self.freshDefaults()
         let entitlements = EntitlementStore(defaults: defaults)
@@ -72,6 +130,7 @@ final class PurchaseFlowTests: XCTestCase {
     /// same path this takes. Keeping Plus after a refund would be theft in the
     /// other direction.
     func testLosingTheTransactionRevokesPlus() async throws {
+        try requireAPresentableStorefront()
         let session = try makeSession()
         let (entitlements, store) = makeStore()
 
@@ -89,6 +148,7 @@ final class PurchaseFlowTests: XCTestCase {
     /// Nothing anybody typed is ever collateral damage. A refund takes the
     /// palettes and the ad-free-ness; it does not take the wheels.
     func testRevocationDoesNotTouchSavedWork() async throws {
+        try requireAPresentableStorefront()
         let session = try makeSession()
         let defaults = Self.freshDefaults()
         let entitlements = EntitlementStore(defaults: defaults)
@@ -116,6 +176,7 @@ final class PurchaseFlowTests: XCTestCase {
     /// Required by App Review, and genuinely needed — entitlements follow an
     /// Apple ID, and this may be a new device.
     func testRestoreBringsPlusBackOnAFreshDevice() async throws {
+        try requireAPresentableStorefront()
         _ = try makeSession()
 
         let (firstDevice, firstStore) = makeStore()
