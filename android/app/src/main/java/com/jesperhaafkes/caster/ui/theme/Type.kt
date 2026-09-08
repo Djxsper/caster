@@ -102,6 +102,12 @@ object CasterType {
     /** The line under a game's play area. */
     val status = base(15, FontWeight.Medium, 20)
 
+    /** A segment, a toggle title — anything inside a game's control panel. */
+    val control = base(14, FontWeight.SemiBold, 19)
+
+    /** The quieter half of a control row: a stepper's label. */
+    val controlLabel = base(14, FontWeight.Normal, 19)
+
     /** Section headers in Settings. */
     val sectionHeader = base(13, FontWeight.Bold, 17, 0.6f)
 

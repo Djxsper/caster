@@ -430,9 +430,7 @@ fun EmptyPlayHint(
         Text(text = glyph, style = TextStyle(fontFamily = CasterFontFamily, fontSize = 46.sp))
         Text(
             text = title,
-            style = TextStyle(
-                fontFamily = CasterFontFamily,
-                fontSize = 20.sp,
+            style = CasterType.subtitle.copy(
                 fontWeight = FontWeight.Bold,
                 color = theme.textPrimary,
             ),
@@ -440,9 +438,7 @@ fun EmptyPlayHint(
         Text(
             text = detail,
             modifier = Modifier.widthIn(max = 280.dp),
-            style = TextStyle(
-                fontFamily = CasterFontFamily,
-                fontSize = 13.sp,
+            style = CasterType.rowDetail.copy(
                 color = theme.textSecondary,
                 textAlign = TextAlign.Center,
             ),
@@ -492,8 +488,7 @@ fun ResultBanner(
     ) {
         Text(
             text = headline,
-            style = TextStyle(
-                fontFamily = CasterFontFamily,
+            style = CasterType.title.copy(
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Black,
                 color = tint ?: theme.textPrimary,
@@ -504,9 +499,7 @@ fun ResultBanner(
         if (detail != null) {
             Text(
                 text = detail,
-                style = TextStyle(
-                    fontFamily = CasterFontFamily,
-                    fontSize = 13.sp,
+                style = CasterType.rowDetail.copy(
                     color = theme.textSecondary,
                     textAlign = TextAlign.Center,
                 ),

@@ -23,11 +23,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.jesperhaafkes.caster.ui.theme.CasterFontFamily
+import com.jesperhaafkes.caster.ui.theme.CasterType
 import com.jesperhaafkes.caster.ui.theme.LocalTheme
 
 /** The panel a game floats over its play area to hold its pre-round settings. */
@@ -40,9 +37,9 @@ fun ControlPanel(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(14.dp))
             .background(theme.surfaceRaised.copy(alpha = 0.92f))
-            .border(1.dp, theme.border, RoundedCornerShape(12.dp))
+            .border(1.dp, theme.border, RoundedCornerShape(14.dp))
             .padding(vertical = 10.dp, horizontal = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
         content = content,
@@ -80,16 +77,13 @@ fun <T> SegmentedControl(
                     .weight(1f)
                     .clip(RoundedCornerShape(7.dp))
                     .background(fill)
-                    .tappable { onSelect(option) }
+                    .pressable(pressedScale = 0.94f) { onSelect(option) }
                     .padding(vertical = 8.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = label(option),
-                    style = TextStyle(
-                        fontFamily = CasterFontFamily,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
+                    style = CasterType.control.copy(
                         color = if (isSelected) Color.White else theme.textPrimary,
                     ),
                 )
@@ -116,7 +110,7 @@ fun StepperRow(
         Text(
             text = title,
             modifier = Modifier.weight(1f),
-            style = TextStyle(fontFamily = CasterFontFamily, fontSize = 14.sp, color = theme.textSecondary),
+            style = CasterType.controlLabel.copy(color = theme.textSecondary),
         )
         StepButton(isPlus = false, enabled = value > range.first) { onValueChange(value - 1) }
         StepButton(isPlus = true, enabled = value < range.last) { onValueChange(value + 1) }
@@ -132,7 +126,7 @@ private fun StepButton(isPlus: Boolean, enabled: Boolean, onClick: () -> Unit) {
             .alpha(if (enabled) 1f else 0.3f)
             .clip(RoundedCornerShape(8.dp))
             .background(theme.accent.copy(alpha = 0.15f))
-            .tappable(enabled = enabled, onClick = onClick),
+            .pressable(enabled = enabled, pressedScale = 0.88f, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Canvas(Modifier.size(14.dp)) {
@@ -170,10 +164,10 @@ fun ToggleRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(14.dp))
             .background(theme.surfaceRaised)
-            .border(1.dp, theme.border, RoundedCornerShape(12.dp))
-            .tappable { onCheckedChange(!checked) }
+            .border(1.dp, theme.border, RoundedCornerShape(14.dp))
+            .pressable(pressedScale = 0.98f) { onCheckedChange(!checked) }
             .padding(vertical = 10.dp, horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -182,24 +176,16 @@ fun ToggleRow(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            Text(
-                text = title,
-                style = TextStyle(
-                    fontFamily = CasterFontFamily,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = theme.textPrimary,
-                ),
-            )
-            Text(
-                text = caption,
-                style = TextStyle(fontFamily = CasterFontFamily, fontSize = 12.sp, color = theme.textSecondary),
-            )
+            Text(text = title, style = CasterType.control.copy(color = theme.textPrimary))
+            Text(text = caption, style = CasterType.caption.copy(color = theme.textSecondary))
         }
 
         androidx.compose.material3.Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
+            colors = androidx.compose.material3.SwitchDefaults.colors(
+                checkedTrackColor = theme.accent,
+            ),
         )
     }
 }

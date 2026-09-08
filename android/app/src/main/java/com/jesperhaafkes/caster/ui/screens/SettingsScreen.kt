@@ -145,7 +145,10 @@ fun SettingsScreen(onBack: () -> Unit) {
                         SettingsRow(
                             title = "Restore purchase",
                             titleColor = theme.accent,
-                            onClick = { billing.restore() }.takeIf { !billing.isWorking },
+                            // Null while a query is already in flight, which is
+                            // what makes the row untappable rather than queuing
+                            // a second one behind the first.
+                            onClick = if (billing.isWorking) null else { { billing.restore() } },
                         )
                     }
 
