@@ -101,10 +101,23 @@ jobs:
 
       # Uploaded before it is inspected, on purpose. A check that withholds the
       # artifact it was meant to describe is worse than no check.
+      #
+      # Two paths rather than one, deliberately. GitHub wraps every artifact in
+      # a zip of its own, so what you actually download is caster-adtest.zip
+      # with the IPA inside it - and renaming that outer zip to .ipa hands
+      # AltStore a zip whose top level is a file instead of a Payload folder,
+      # which it reports as a format error. Listing two paths puts their common
+      # root - the workspace - at the root of the artifact zip, so the download
+      # has Payload/Caster.app/... at its top level and is a valid IPA in its
+      # own right. Rename it to .ipa and it installs; unzip it instead and you
+      # get caster-adtest.ipa. Either way works now. A stray file next to
+      # Payload is ignored by the installer, the way iTunesArtwork always was.
       - uses: actions/upload-artifact@v6
         with:
           name: caster-adtest
-          path: caster-adtest.ipa
+          path: |
+            Payload
+            caster-adtest.ipa
           retention-days: 14
           if-no-files-found: error
 
@@ -164,11 +177,21 @@ jobs:
 
       - name: How to install it
         run: |
+          SIZE=$(stat -f%z caster-adtest.ipa 2>/dev/null || stat -c%s caster-adtest.ipa)
           echo "### Test IPA ready" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "1. Download **caster-adtest** from the Artifacts section of this run." >> "$GITHUB_STEP_SUMMARY"
-          echo "2. Unzip it on your iPhone to get \`caster-adtest.ipa\`." >> "$GITHUB_STEP_SUMMARY"
-          echo "3. Open it and choose **Share -> AltStore**." >> "$GITHUB_STEP_SUMMARY"
+          echo "Download **caster-adtest** from the Artifacts section of this run." >> "$GITHUB_STEP_SUMMARY"
+          echo "You get \`caster-adtest.zip\`, and either of these works:" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Rename it to \`caster-adtest.ipa\` and open it. Nothing to unzip." >> "$GITHUB_STEP_SUMMARY"
+          echo "- Or unzip it and use the \`caster-adtest.ipa\` inside." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Then **Share -> AltStore** on the phone, or right-click AltServer" >> "$GITHUB_STEP_SUMMARY"
+          echo "on Windows and pick **Sideload .ipa**." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "The IPA in this run is **$SIZE bytes**. Check your download against" >> "$GITHUB_STEP_SUMMARY"
+          echo "that before blaming the build - a 22-byte zip is an empty one, and" >> "$GITHUB_STEP_SUMMARY"
+          echo "AltStore reports a failed download as a format error." >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "It replaces any installed Caster and keeps its saved wheels and groups." >> "$GITHUB_STEP_SUMMARY"
           echo "Look for the orange **TEST BUILD** badge on the launch screen, and the" >> "$GITHUB_STEP_SUMMARY"
