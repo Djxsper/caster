@@ -114,6 +114,12 @@ Two things to know before you test it:
   screenshots. The thirteen PNGs in `android/screenshots/` are raw device
   captures at 1080×2400 — usable as a starting point, but they are not sized or
   framed for the listing.
+
+  **They are also out of date.** They predate the type scale, the press
+  animations, the settings screen and the reworked launch mark, so every one of
+  them shows an app that no longer exists. Retake them on a device before
+  uploading — a listing whose screenshots do not match the install is a bad
+  first impression and, if it is far enough off, a policy problem.
 - **Privacy policy.** Required, and it is still a short one: the app has no
   analytics, no accounts and no network code of its own. Names and wheel entries
   are written to `SharedPreferences` on the device and go nowhere else.
